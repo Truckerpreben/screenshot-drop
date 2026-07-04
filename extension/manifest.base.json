@@ -8,6 +8,14 @@
   "action": {
     "default_popup": "popup.html"
   },
+  "commands": {
+    "capture-last-mode": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S"
+      },
+      "description": "Capture screenshot (last-used mode)"
+    }
+  },
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
