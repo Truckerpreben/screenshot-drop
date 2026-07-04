@@ -32,6 +32,7 @@ export class AnnotationEditor {
   private state = new AnnotationState();
   private tool: ToolKind = 'arrow';
   private color = '#e5484d';
+  private strokeWidth = 3;
   private drawing = false;
   private current: Annotation | null = null;
 
@@ -52,6 +53,11 @@ export class AnnotationEditor {
     this.color = color;
   }
 
+  /** Sets the stroke width for subsequent annotations, clamped to [1, 12] px. */
+  setStrokeWidth(w: number): void {
+    this.strokeWidth = Math.max(1, Math.min(12, w));
+  }
+
   get currentTool(): ToolKind {
     return this.tool;
   }
@@ -60,10 +66,14 @@ export class AnnotationEditor {
     return this.color;
   }
 
+  get currentStrokeWidth(): number {
+    return this.strokeWidth;
+  }
+
   pointerDown(point: Point): void {
     this.drawing = true;
     const points = this.tool === 'pen' ? [point] : [point, point];
-    this.current = { tool: this.tool, color: this.color, points };
+    this.current = { tool: this.tool, color: this.color, width: this.strokeWidth, points };
   }
 
   pointerMove(point: Point): void {

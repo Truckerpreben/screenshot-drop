@@ -86,4 +86,32 @@ describe('AnnotationEditor', () => {
     editor.pointerUp();
     expect(editor.annotations.length).toBe(0);
   });
+
+  it('defaults the stroke width to 3', () => {
+    expect(editor.currentStrokeWidth).toBe(3);
+  });
+
+  it('a newly created annotation carries the current stroke width', () => {
+    editor.setStrokeWidth(6);
+    editor.pointerDown({ x: 0, y: 0 });
+    editor.pointerUp();
+    expect(editor.annotations[0].width).toBe(6);
+  });
+
+  it('setStrokeWidth changes the width of subsequent annotations only', () => {
+    editor.pointerDown({ x: 0, y: 0 });
+    editor.pointerUp();
+    editor.setStrokeWidth(8);
+    editor.pointerDown({ x: 1, y: 1 });
+    editor.pointerUp();
+    expect(editor.annotations[0].width).toBe(3); // created before setStrokeWidth
+    expect(editor.annotations[1].width).toBe(8);
+  });
+
+  it('clamps the stroke width to [1, 12]', () => {
+    editor.setStrokeWidth(0);
+    expect(editor.currentStrokeWidth).toBe(1);
+    editor.setStrokeWidth(99);
+    expect(editor.currentStrokeWidth).toBe(12);
+  });
 });

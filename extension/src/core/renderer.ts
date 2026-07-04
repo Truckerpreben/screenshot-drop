@@ -22,25 +22,27 @@ export function render(
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(baseImage, 0, 0);
 
-  const lineWidth = opts.lineWidth ?? DEFAULT_LINE_WIDTH;
-  ctx.lineWidth = lineWidth;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
+  const fallbackWidth = opts.lineWidth ?? DEFAULT_LINE_WIDTH;
   for (const annotation of annotations) {
-    drawAnnotation(ctx, annotation);
+    drawAnnotation(ctx, annotation, fallbackWidth);
   }
 }
 
-function drawAnnotation(ctx: Ctx2D, annotation: Annotation): void {
+function drawAnnotation(ctx: Ctx2D, annotation: Annotation, fallbackWidth: number): void {
+  // Per-annotation stroke width; fall back to the default when unset or 0.
+  const width = annotation.width && annotation.width > 0 ? annotation.width : fallbackWidth;
   ctx.strokeStyle = annotation.color;
+  ctx.lineWidth = width;
   switch (annotation.tool) {
     case 'line':
     case 'rect':
       drawShape(ctx, annotation);
       break;
     case 'arrow':
-      drawArrow(ctx, annotation);
+      drawArrow(ctx, annotation, width);
       break;
     case 'pen':
       drawPen(ctx, annotation);
@@ -61,7 +63,7 @@ function drawShape(ctx: Ctx2D, annotation: Annotation): void {
   }
 }
 
-function drawArrow(ctx: Ctx2D, annotation: Annotation): void {
+function drawArrow(ctx: Ctx2D, annotation: Annotation, width: number): void {
   const [start, end] = annotation.points;
   if (!start || !end) return;
   ctx.beginPath();
@@ -69,7 +71,9 @@ function drawArrow(ctx: Ctx2D, annotation: Annotation): void {
   ctx.lineTo(end.x, end.y);
   ctx.stroke();
 
-  const [left, right] = arrowHead(start, end, ARROW_HEAD_LENGTH, ARROW_HEAD_ANGLE);
+  // Scale the head subtly with stroke width so a thick shaft doesn't get a stubby head.
+  const headLen = ARROW_HEAD_LENGTH + width * 2;
+  const [left, right] = arrowHead(start, end, headLen, ARROW_HEAD_ANGLE);
   ctx.beginPath();
   ctx.moveTo(end.x, end.y);
   ctx.lineTo(left.x, left.y);
