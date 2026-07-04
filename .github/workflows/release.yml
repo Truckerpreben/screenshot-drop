@@ -1,0 +1,108 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+
+      - name: Build extension
+        working-directory: extension
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build service (multi-arch)
+        run: make -C service release
+
+      - name: Package artifacts
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          # Zip the CONTENTS of each dist dir (not the dir itself), so an
+          # unzipped archive drops manifest.json etc. straight into a folder
+          # ready to "Load unpacked" / "Load Temporary Add-on".
+          (cd extension/dist/chromium && zip -r "$GITHUB_WORKSPACE/screenshot-drop-chromium-${TAG}.zip" .)
+          (cd extension/dist/firefox && zip -r "$GITHUB_WORKSPACE/screenshot-drop-firefox-${TAG}.zip" .)
+          sha256sum \
+            "screenshot-drop-chromium-${TAG}.zip" \
+            "screenshot-drop-firefox-${TAG}.zip" \
+            service/bin/snapdropd-linux-amd64 \
+            service/bin/snapdropd-linux-arm64 \
+            > SHA256SUMS.txt
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          gh release create "$TAG" \
+            "screenshot-drop-chromium-${TAG}.zip" \
+            "screenshot-drop-firefox-${TAG}.zip" \
+            service/bin/snapdropd-linux-amd64 \
+            service/bin/snapdropd-linux-arm64 \
+            SHA256SUMS.txt \
+            --title "$TAG" \
+            --generate-notes
+
+      # sign-firefox runs in a separate job (separate VM), so the Firefox
+      # dist output needs to be handed across explicitly.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firefox-dist
+          path: extension/dist/firefox
+
+  sign-firefox:
+    needs: build-release
+    if: ${{ vars.AMO_SIGNING_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: firefox-dist
+          path: extension/dist/firefox
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install web-ext
+        run: npm i -g web-ext
+
+      - name: Sign with AMO
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          web-ext sign \
+            --channel unlisted \
+            --source-dir extension/dist/firefox \
+            --artifacts-dir web-ext-artifacts
+
+      - name: Upload signed .xpi to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          xpi="$(ls web-ext-artifacts/*.xpi)"
+          gh release upload "$TAG" "$xpi"
