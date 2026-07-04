@@ -70,20 +70,36 @@ async function captureFullPageChromiumViaStitch(tabId: number, windowId: number)
   const size = await readDocumentSize(tabId);
   const offsets = planScrollCapture(size.viewportHeight, size.height);
 
+  // Remember where the user had the page scrolled so we can restore it — the
+  // capture loop scrolls to the bottom.
+  const [{ result: originalScrollY }] = await browser.scripting.executeScript({
+    target: { tabId },
+    func: () => window.scrollY
+  });
+
   const tiles: Tile[] = [];
-  for (const offset of offsets) {
+  try {
+    for (const offset of offsets) {
+      await browser.scripting.executeScript({
+        target: { tabId },
+        func: (y: number) => window.scrollTo(0, y),
+        args: [offset]
+      });
+      // 800ms (not 500) to stay under Chrome's ~2 captureVisibleTab/sec quota,
+      // which the tighter interval sat exactly on and intermittently tripped.
+      await new Promise((r) => setTimeout(r, 800));
+      const dataUrl = await browser.tabs.captureVisibleTab(windowId, { format: 'png' });
+      const blob = await (await fetch(dataUrl)).blob();
+      const bitmap = await createImageBitmap(blob);
+      tiles.push({ image: bitmap, y: offset });
+    }
+  } finally {
+    // Restore the original scroll position even if a tile capture threw.
     await browser.scripting.executeScript({
       target: { tabId },
       func: (y: number) => window.scrollTo(0, y),
-      args: [offset]
+      args: [originalScrollY as number]
     });
-    // 800ms (not 500) to stay under Chrome's ~2 captureVisibleTab/sec quota,
-    // which the tighter interval sat exactly on and intermittently tripped.
-    await new Promise((r) => setTimeout(r, 800));
-    const dataUrl = await browser.tabs.captureVisibleTab(windowId, { format: 'png' });
-    const blob = await (await fetch(dataUrl)).blob();
-    const bitmap = await createImageBitmap(blob);
-    tiles.push({ image: bitmap, y: offset });
   }
 
   const [{ result: dpr }] = await browser.scripting.executeScript({
