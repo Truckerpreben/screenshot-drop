@@ -16,7 +16,10 @@ const TOOL_ICONS: Record<string, string> = {
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>',
   rect: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/></svg>',
   line: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" y1="18" x2="18" y2="6"/><circle cx="6" cy="18" r="1.7"/><circle cx="18" cy="6" r="1.7"/></svg>',
-  pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>'
+  pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+  text: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14"/><path d="M12 5v14"/><path d="M9 19h6"/></svg>',
+  pixelate:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/><rect x="3.7" y="3.7" width="4.6" height="4.6" rx="0.5" fill="currentColor" stroke="none"/><rect x="15.7" y="9.7" width="4.6" height="4.6" rx="0.5" fill="currentColor" stroke="none"/><rect x="9.7" y="15.7" width="4.6" height="4.6" rx="0.5" fill="currentColor" stroke="none"/></svg>'
 };
 
 const SEND_ICON =
@@ -141,12 +144,25 @@ async function main(): Promise<void> {
   canvas.width = image.naturalWidth;
   canvas.height = image.naturalHeight;
 
-  const editor = new AnnotationEditor({ canvas, image });
+  // Pixelate needs a scratch canvas to sample/redact; without this factory the
+  // renderer's pixelate pass silently no-ops.
+  const editor = new AnnotationEditor({
+    canvas,
+    image,
+    createCanvas: (w, h) => {
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      return c;
+    }
+  });
 
+  const colorButton = document.getElementById('color-toggle') as HTMLButtonElement;
   const toolbar = document.getElementById('toolbar') as HTMLElement;
   const toolButtons = new Map<string, HTMLButtonElement>();
 
-  // Reflects the editor's current tool onto the buttons as visual + ARIA state.
+  // Reflects the editor's current tool onto the buttons as visual + ARIA state,
+  // and dims the color swatch for tools that don't draw in color (pixelate).
   // Presentation only — it reads editor.currentTool and never alters tool logic.
   const refreshActiveTool = (): void => {
     const active = editor.currentTool;
@@ -155,6 +171,9 @@ async function main(): Promise<void> {
       btn.classList.toggle('is-active', isActive);
       btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     }
+    const usesColor = TOOLS.find((t) => t.id === active)?.usesColor !== false;
+    colorButton.disabled = !usesColor;
+    colorButton.setAttribute('aria-disabled', usesColor ? 'false' : 'true');
   };
 
   for (const tool of TOOLS) {
@@ -175,7 +194,6 @@ async function main(): Promise<void> {
   }
   refreshActiveTool();
 
-  const colorButton = document.getElementById('color-toggle') as HTMLButtonElement;
   colorButton.style.backgroundColor = editor.currentColor;
   colorButton.addEventListener('click', () => {
     editor.setColor(nextColor(editor.currentColor));
@@ -201,7 +219,68 @@ async function main(): Promise<void> {
   document.getElementById('undo')?.addEventListener('click', undo);
   document.getElementById('clear')?.addEventListener('click', () => editor.clear());
 
-  canvas.addEventListener('pointerdown', (e) => editor.pointerDown(toCanvasPoint(canvas, e)));
+  // --- Text tool: a single floating input placed at the click point. ---
+  const frame = document.querySelector('.stage__frame') as HTMLElement;
+  let activeText: HTMLInputElement | null = null;
+
+  const openTextInput = (e: PointerEvent): void => {
+    // Only one input at a time — opening another commits the first (via its blur).
+    if (activeText) activeText.blur();
+
+    const anchor = toCanvasPoint(canvas, e);
+    const frameRect = frame.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    const displayRatio = canvasRect.width / canvas.width;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'text-input';
+    input.setAttribute('aria-label', 'Annotation text');
+    input.style.left = `${e.clientX - frameRect.left}px`;
+    input.style.top = `${e.clientY - frameRect.top}px`;
+    // Match the rendered label: fontSize = 8 + width*3 (canvas px), scaled to CSS px.
+    input.style.fontSize = `${Math.max(11, (8 + editor.currentStrokeWidth * 3) * displayRatio)}px`;
+    input.style.color = editor.currentColor;
+
+    let settled = false;
+    const commit = (): void => {
+      if (settled) return;
+      settled = true;
+      const value = input.value;
+      input.remove();
+      if (activeText === input) activeText = null;
+      editor.addText(anchor, value); // ignores empty/whitespace
+    };
+    const cancel = (): void => {
+      if (settled) return;
+      settled = true;
+      input.remove();
+      if (activeText === input) activeText = null;
+    };
+
+    input.addEventListener('keydown', (ke) => {
+      if (ke.key === 'Enter') {
+        ke.preventDefault();
+        commit();
+      } else if (ke.key === 'Escape') {
+        ke.preventDefault();
+        cancel();
+      }
+    });
+    input.addEventListener('blur', commit);
+
+    activeText = input;
+    frame.appendChild(input);
+    input.focus();
+  };
+
+  canvas.addEventListener('pointerdown', (e) => {
+    if (editor.currentTool === 'text') {
+      openTextInput(e);
+      return;
+    }
+    editor.pointerDown(toCanvasPoint(canvas, e));
+  });
   canvas.addEventListener('pointermove', (e) => editor.pointerMove(toCanvasPoint(canvas, e)));
   canvas.addEventListener('pointerup', () => editor.pointerUp());
 

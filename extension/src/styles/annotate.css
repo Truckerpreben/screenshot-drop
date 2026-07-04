@@ -78,6 +78,10 @@ body {
   color: var(--fg-subtle);
 }
 
+.hintline__dash {
+  margin: 0 -1px;
+}
+
 @media (max-width: 720px) {
   .editor-bar__hints {
     display: none;
@@ -160,6 +164,13 @@ body {
   box-shadow: 0 0 0 1px var(--border-hover), 0 0 0 4px var(--ring);
 }
 
+/* Dimmed when the active tool doesn't draw in color (pixelate) */
+.swatch:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* Stroke-thickness control */
 .thickness {
   gap: 8px;
@@ -220,10 +231,34 @@ body {
 }
 
 .stage__frame {
+  position: relative;
   margin: auto;
   border-radius: var(--r-md);
   box-shadow: var(--canvas-shadow);
   line-height: 0;
+}
+
+/* Floating text-tool input, absolutely placed at the click point inside the frame */
+.text-input {
+  position: absolute;
+  z-index: 20;
+  min-width: 84px;
+  margin: 0;
+  padding: 1px 5px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  line-height: 1.2;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border: 1.5px solid var(--accent);
+  border-radius: var(--r-sm);
+  box-shadow: 0 0 0 3px var(--ring), var(--e3);
+  outline: none;
+  caret-color: var(--accent);
+}
+
+.text-input::placeholder {
+  color: var(--fg-faint);
+  font-weight: 500;
 }
 
 canvas {
