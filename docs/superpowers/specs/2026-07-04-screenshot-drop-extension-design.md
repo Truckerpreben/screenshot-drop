@@ -23,12 +23,27 @@ to the remote box, figure out the path, type it in.
 
 The extension:
 
-1. Captures a screenshot of the current browser tab.
+1. Captures a screenshot in one of three modes (see Capture modes).
 2. Lets you draw basic annotations on it (arrows, boxes, lines, freehand).
 3. Sends the annotated image to a **destination you configured** — each destination is a
    receiving service running on some Computer B.
 4. Receives back the path where the service saved the file, and copies it to your
    clipboard (and shows it), so you paste it straight into Claude Code.
+
+## Technology stack
+
+Chosen so nothing is thrown away when this grows from an extension into a full desktop
+screenshot app later.
+
+- **Capture + annotation UI:** TypeScript + HTML `<canvas>`. Written as web code so the
+  exact same drawing/annotation UI runs in the extension now and inside a desktop app's
+  webview later.
+- **Receiving service:** **Go**, compiled to a single static binary — trivial to run on
+  Ubuntu under systemd, no runtime to install.
+- **Future desktop app path:** **Wails** (Go backend + web frontend). When you build the
+  full standalone program, the Go service logic and the web annotation UI both fold into
+  it directly — no rewrite. (Rust + Tauri is the alternative; rejected as heavier to
+  write for a web/JS-oriented setup.)
 
 ### The core flow
 
@@ -75,6 +90,27 @@ Kept deliberately small and dependency-light so it's trivial to run on Ubuntu (s
 binary or a tiny script under systemd). Config it needs: listen port, save folder, and
 an optional shared token so only your extension can post to it.
 
+## Capture modes
+
+Three modes, all in v1:
+
+- **Full page** — the entire scrollable page, not just what's on screen. (Firefox has a
+  native full-page capture API; in Chromium/Brave this is done by scroll-and-stitch or
+  the debugger capture API — handled in the extension.)
+- **Visible tab** — what's currently shown in the viewport. Fast, one shot.
+- **Marked area** — you drag a rectangle over the page and only that region is captured.
+
+After any mode, the image opens in the annotation view before Save.
+
+## Networking scope & auth
+
+- **LAN only** for now — services bind to the LAN interface, not exposed publicly.
+- **Shared token:** each service generates a token; you paste it into that destination in
+  the extension. The service rejects any request without the matching token.
+- **Origin lockdown:** the service rejects cross-origin browser requests (only the
+  extension may post), so a random web page in your browser can't reach it.
+- No TLS certificates required on a closed LAN. (Can be added later if ever exposed.)
+
 ## Annotation tools (scope)
 
 Basic, fast, keyboard-friendly. In scope:
@@ -103,10 +139,15 @@ sync, image editing beyond the above.
 - Adding a new destination machine = run the small service on it + add one row in the
   extension.
 
+## Decisions locked
+
+- Stack: Go service (single binary) + TypeScript/canvas UI; Wails as the future
+  desktop-app path.
+- Capture: full page, visible tab, and marked area — all three in v1.
+- Networking: LAN only, shared token + origin lockdown, no TLS for now.
+
 ## Open questions (for planning)
 
-1. Language/runtime for the receiving service (e.g. Go single binary, or a small
-   Python/Node script) — pick for easiest Ubuntu deployment.
-2. Do you want capture of a selected region of the tab, or always the full visible tab?
-3. Auth: is a shared token enough, or do you want it locked to your LAN only?
+- None blocking. Remaining choices (systemd unit details, exact token storage in the
+  extension, default port) are settled during the implementation plan.
 ```
