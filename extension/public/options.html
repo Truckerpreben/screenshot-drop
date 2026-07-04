@@ -78,7 +78,14 @@
             <div id="form-error" class="form-error" role="alert" aria-live="polite"></div>
 
             <div class="form-actions">
+              <div id="form-test-status" class="test-status" role="status" aria-live="polite"></div>
               <button id="form-cancel" class="btn btn-ghost" type="button" hidden>Cancel</button>
+              <button id="form-test" class="btn btn-secondary" type="button">
+                <span class="form-test__icon" aria-hidden="true">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5 7 5-14 2.5 7h4" /></svg>
+                </span>
+                <span>Test</span>
+              </button>
               <button id="form-submit" class="btn btn-primary" type="submit">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4 4 10-10" /></svg>
                 <span id="form-submit-label">Save destination</span>

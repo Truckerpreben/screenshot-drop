@@ -282,7 +282,79 @@
 
 .form-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 10px;
   margin-top: 2px;
+}
+
+.form-test__icon {
+  display: inline-flex;
+}
+
+/* Inline connection-test status (shared by the form and each saved row) */
+.test-status,
+.dest__result {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--t-13);
+  font-weight: 550;
+}
+
+.test-status.is-shown,
+.dest__result.is-shown {
+  display: inline-flex;
+}
+
+.test-status {
+  margin-right: auto;
+}
+
+.status-ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.status-ic svg {
+  width: 15px;
+  height: 15px;
+}
+
+.status-tx {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.test-status[data-variant="success"],
+.dest__result[data-variant="success"] {
+  color: var(--success);
+}
+
+.test-status[data-variant="error"],
+.dest__result[data-variant="error"] {
+  color: var(--danger);
+}
+
+.test-status[data-variant="pending"],
+.dest__result[data-variant="pending"] {
+  color: var(--fg-muted);
+}
+
+/* Per-row transient result sits between the info and the action buttons */
+.dest__result {
+  flex: 0 1 auto;
+  max-width: 40%;
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.dest__test:hover {
+  color: var(--accent);
+  background: var(--accent-subtle-bg);
 }

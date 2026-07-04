@@ -1,5 +1,7 @@
 import browser from './browser';
 import { WebextStore } from '../platform/store-webext';
+import { HttpTransport } from '../platform/transport-http';
+import { UploadError } from '../platform/transport';
 import type { Destination } from '../platform/transport';
 
 const ICON_SERVER =
@@ -8,6 +10,13 @@ const ICON_EDIT =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
 const ICON_DELETE =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/></svg>';
+const ICON_TEST =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.5 7 5-14 2.5 7h4"/></svg>';
+const ICON_OK =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4 4 10-10"/></svg>';
+const ICON_FAIL =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+const ICON_SPINNER = '<span class="spinner"></span>';
 
 /**
  * Validation is unchanged from the reviewed version: name must be non-empty
@@ -33,6 +42,20 @@ function maskToken(token: string): string {
   return `${'•'.repeat(Math.min(token.length - 4, 8))}${token.slice(-4)}`;
 }
 
+/** Maps a ping failure to a user-facing, action-oriented message. */
+function failureText(err: UploadError): string {
+  switch (err.kind) {
+    case 'auth':
+      return 'Token rejected — check the token';
+    case 'network':
+      return 'Service unreachable — check the address';
+    default:
+      return 'Service error — is this a Screenshot Drop service?';
+  }
+}
+
+type StatusVariant = 'pending' | 'success' | 'error';
+
 const els = {
   list: () => document.getElementById('dest-list') as HTMLElement,
   empty: () => document.getElementById('dest-empty') as HTMLElement,
@@ -42,11 +65,64 @@ const els = {
   title: () => document.getElementById('form-title') as HTMLElement,
   cancel: () => document.getElementById('form-cancel') as HTMLButtonElement,
   submitLabel: () => document.getElementById('form-submit-label') as HTMLElement,
+  test: () => document.getElementById('form-test') as HTMLButtonElement,
+  testStatus: () => document.getElementById('form-test-status') as HTMLElement,
   id: () => document.getElementById('form-id') as HTMLInputElement,
   name: () => document.getElementById('form-name') as HTMLInputElement,
   url: () => document.getElementById('form-url') as HTMLInputElement,
   token: () => document.getElementById('form-token') as HTMLInputElement
 };
+
+function iconFor(variant: StatusVariant): string {
+  if (variant === 'success') return ICON_OK;
+  if (variant === 'error') return ICON_FAIL;
+  return ICON_SPINNER;
+}
+
+/** Renders an inline status (icon + text) into a status element with a variant tone. */
+function setStatus(el: HTMLElement, variant: StatusVariant, text: string): void {
+  el.dataset.variant = variant;
+  el.innerHTML = `<span class="status-ic" aria-hidden="true">${iconFor(variant)}</span><span class="status-tx"></span>`;
+  const tx = el.querySelector('.status-tx') as HTMLElement | null;
+  if (tx) tx.textContent = text;
+  el.title = text;
+  el.classList.add('is-shown');
+}
+
+function clearStatus(el: HTMLElement): void {
+  el.innerHTML = '';
+  el.classList.remove('is-shown');
+  delete el.dataset.variant;
+  el.removeAttribute('title');
+}
+
+/** Runs a ping against `dest`, driving a status element and disabling the button in flight. */
+async function runTest(
+  dest: Destination,
+  button: HTMLButtonElement,
+  iconSlot: HTMLElement,
+  status: HTMLElement,
+  onSettled?: () => void
+): Promise<void> {
+  const restoreIcon = iconSlot.innerHTML;
+  button.disabled = true;
+  iconSlot.innerHTML = ICON_SPINNER;
+  setStatus(status, 'pending', 'Testing…');
+  try {
+    await new HttpTransport().ping(dest);
+    setStatus(status, 'success', 'Connection OK');
+  } catch (e) {
+    if (e instanceof UploadError) setStatus(status, 'error', failureText(e));
+    else setStatus(status, 'error', 'Test failed — see console for details.');
+    console.error('screenshot-drop: ping failed', e);
+  } finally {
+    button.disabled = false;
+    iconSlot.innerHTML = restoreIcon;
+    onSettled?.();
+  }
+}
+
+const rowResultTimers = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>();
 
 function fillForm(dest: Destination): void {
   els.id().value = dest.id;
@@ -61,6 +137,7 @@ function clearForm(): void {
   els.url().value = '';
   els.token().value = '';
   els.error().textContent = '';
+  clearStatus(els.testStatus());
 }
 
 /** Presentational: flips the form header/actions between add and edit modes. */
@@ -99,8 +176,31 @@ function buildRow(dest: Destination, store: WebextStore): HTMLElement {
 
   info.append(name, meta);
 
+  // Transient inline test result for this row.
+  const result = document.createElement('span');
+  result.className = 'dest__result';
+  result.setAttribute('role', 'status');
+  result.setAttribute('aria-live', 'polite');
+
   const actions = document.createElement('div');
   actions.className = 'dest__actions';
+
+  const testButton = document.createElement('button');
+  testButton.type = 'button';
+  testButton.className = 'icon-btn dest__test';
+  testButton.title = `Test connection to ${dest.name}`;
+  testButton.setAttribute('aria-label', `Test connection to ${dest.name}`);
+  testButton.innerHTML = ICON_TEST;
+  testButton.addEventListener('click', () => {
+    void runTest(dest, testButton, testButton, result, () => {
+      const prev = rowResultTimers.get(result);
+      if (prev) clearTimeout(prev);
+      rowResultTimers.set(
+        result,
+        setTimeout(() => clearStatus(result), 5000)
+      );
+    });
+  });
 
   const editButton = document.createElement('button');
   editButton.type = 'button';
@@ -126,8 +226,8 @@ function buildRow(dest: Destination, store: WebextStore): HTMLElement {
     await render(store);
   });
 
-  actions.append(editButton, deleteButton);
-  row.append(icon, info, actions);
+  actions.append(testButton, editButton, deleteButton);
+  row.append(icon, info, result, actions);
   return row;
 }
 
@@ -153,6 +253,32 @@ async function main(): Promise<void> {
     clearForm();
     setEditMode(false);
   });
+
+  // Test the CURRENT form values so a destination can be verified before saving.
+  els.test().addEventListener('click', () => {
+    const name = els.name().value.trim();
+    const url = els.url().value.trim();
+    const token = els.token().value;
+
+    const error = validate(name, url);
+    if (error) {
+      setStatus(els.testStatus(), 'error', error);
+      return;
+    }
+    if (token === '') {
+      setStatus(els.testStatus(), 'error', 'Token is required.');
+      return;
+    }
+
+    const dest: Destination = { id: 'test', name, url, token };
+    const iconSlot = els.test().querySelector('.form-test__icon') as HTMLElement;
+    void runTest(dest, els.test(), iconSlot, els.testStatus());
+  });
+
+  // A stale connection result shouldn't linger after the inputs change.
+  for (const field of [els.name(), els.url(), els.token()]) {
+    field.addEventListener('input', () => clearStatus(els.testStatus()));
+  }
 
   els.form().addEventListener('submit', async (e) => {
     e.preventDefault();
