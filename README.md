@@ -1,5 +1,7 @@
 # Screenshot Drop
 
+![CI](https://github.com/Truckerpreben/screenshot-drop/actions/workflows/ci.yml/badge.svg)
+
 A browser extension that captures a screenshot, lets you annotate it, and
 POSTs the result to a small Go **receiving service** running on another
 machine on your LAN. The service saves the file and hands back its absolute
