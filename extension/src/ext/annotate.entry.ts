@@ -102,10 +102,13 @@ async function main(): Promise<void> {
   const saveButton = document.getElementById('save') as HTMLButtonElement;
 
   document.addEventListener('keydown', (e) => {
-    // Ctrl+Z / Cmd+Z undoes an annotation, but not while the shortname field
-    // has focus — there we let the browser's own text-field undo run.
+    // Don't fire editor shortcuts while typing in a text field, select, or
+    // contenteditable — let the browser handle the keystroke (incl. its own undo).
+    const t = e.target as HTMLElement | null;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+
+    // Ctrl+Z / Cmd+Z undoes the most recent annotation.
     if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
-      if (document.activeElement === shortnameInput) return;
       e.preventDefault();
       undo();
       return;
