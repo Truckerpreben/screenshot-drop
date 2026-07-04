@@ -1,5 +1,5 @@
 import browser from './browser';
-import type { RegionMessage } from './messaging';
+import type { RegionMessage, RegionCancelledMessage } from './messaging';
 
 const OVERLAY_ID = 'snapdrop-overlay-marquee';
 
@@ -60,6 +60,7 @@ function installOverlay(): void {
     start = null;
 
     removeOverlay();
+    document.removeEventListener('keydown', onKeyDown);
     await new Promise((r) => requestAnimationFrame(r));
     await new Promise((r) => requestAnimationFrame(r));
 
@@ -71,6 +72,10 @@ function installOverlay(): void {
     if (e.key === 'Escape') {
       removeOverlay();
       document.removeEventListener('keydown', onKeyDown);
+      // Tell the background to drop the persisted "awaiting region" state so a
+      // cancelled marquee doesn't leave a dangling pending-marked entry.
+      const message: RegionCancelledMessage = { type: 'region-cancelled' };
+      void browser.runtime.sendMessage(message);
     }
   }
 

@@ -1,5 +1,5 @@
 import * as esbuild from 'esbuild';
-import { readFileSync, writeFileSync, mkdirSync, cpSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, cpSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -78,7 +78,31 @@ async function buildTarget(target) {
 
   const manifest = buildManifest(target);
   writeFileSync(join(outDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+
+  if (target === 'firefox') {
+    assertNoChromeDebugger(outDir);
+  }
+
   console.log(`Built ${target} -> ${outDir}`);
+}
+
+/**
+ * Guards the load-bearing dead-code elimination: the Firefox bundle must never
+ * contain Chromium's `chrome.debugger` path (Firefox has no such API, and it
+ * relies on the __TARGET__ constant-fold dropping that branch). Fails the build
+ * if a future edit reintroduces it.
+ */
+function assertNoChromeDebugger(outDir) {
+  const jsFiles = readdirSync(outDir).filter((f) => f.endsWith('.js'));
+  for (const file of jsFiles) {
+    const contents = readFileSync(join(outDir, file), 'utf8');
+    if (contents.includes('chrome.debugger')) {
+      throw new Error(
+        `Firefox bundle ${file} contains "chrome.debugger" — the per-target dead-code elimination broke. ` +
+          `Check that capture/fullpage.ts keeps the Chromium branch inside the __TARGET__ if/else.`
+      );
+    }
+  }
 }
 
 const { target } = parseArgs(process.argv.slice(2));

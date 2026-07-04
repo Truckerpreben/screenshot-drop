@@ -1,38 +1,111 @@
+import type { Runtime } from 'webextension-polyfill';
 import browser from './browser';
-import type { CaptureMessage } from './messaging';
-import { captureStorageKey } from './messaging';
+import type { CaptureMessage, ExtensionMessage, RegionMessage, PendingMarked } from './messaging';
+import { captureStorageKey, pendingMarkedKey } from './messaging';
 import { captureVisible } from './capture/visible';
-import { captureMarked } from './capture/marked';
+import { injectMarqueeOverlay, captureMarkedRegion } from './capture/marked';
 import { captureFullPage } from './capture/fullpage';
 
-async function runCapture(mode: CaptureMessage['mode'], tab: { id?: number; windowId?: number }): Promise<string> {
-  if (tab.windowId === undefined) throw new Error('background: active tab has no windowId');
-  if (tab.id === undefined) throw new Error('background: active tab has no id');
-  switch (mode) {
-    case 'visible':
-      return captureVisible(tab.windowId);
-    case 'marked':
-      return captureMarked(tab.id, tab.windowId);
-    case 'full':
-      return captureFullPage(tab.id, tab.windowId);
-  }
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
-browser.runtime.onMessage.addListener((message: unknown) => {
-  const msg = message as CaptureMessage;
-  if (!msg || msg.type !== 'capture') return undefined;
+/** Stores a finished capture in session storage and opens the annotate tab for it. */
+async function handoffCapture(dataUrl: string): Promise<void> {
+  const id = crypto.randomUUID();
+  await browser.storage.session.set({ [captureStorageKey(id)]: dataUrl });
+  await browser.tabs.create({ url: `annotate.html?id=${id}` });
+}
 
-  return (async () => {
-    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-    if (!tab) throw new Error('background: no active tab');
-
+/**
+ * Surfaces a capture failure to the user. The popup that triggered the capture
+ * has already closed, so a thrown error would otherwise be invisible (common on
+ * chrome:// pages or when debugger attach is denied). Prefer a notification;
+ * fall back to opening the annotate tab with an ?error= param.
+ */
+async function reportCaptureError(message: string): Promise<void> {
+  if (browser.notifications?.create) {
     try {
-      const dataUrl = await runCapture(msg.mode, tab);
-      const id = crypto.randomUUID();
-      await browser.storage.session.set({ [captureStorageKey(id)]: dataUrl });
-      await browser.tabs.create({ url: `annotate.html?id=${id}` });
-    } catch (err) {
-      console.error('screenshot-drop: capture failed', err);
+      await browser.notifications.create({
+        type: 'basic',
+        iconUrl: browser.runtime.getURL('icons/icon48.png'),
+        title: 'Screenshot Drop',
+        message: `Capture failed: ${message}`
+      });
+      return;
+    } catch {
+      // notifications unavailable at runtime — fall through to the tab fallback
     }
-  })();
+  }
+  await browser.tabs.create({ url: `annotate.html?error=${encodeURIComponent(message)}` });
+}
+
+/** Runs a non-interactive capture. 'marked' is handled via the region round-trip, not here. */
+async function runDirectCapture(mode: 'visible' | 'full', tab: { id: number; windowId: number }): Promise<string> {
+  if (mode === 'visible') {
+    return captureVisible(tab.windowId);
+  }
+  return captureFullPage(tab.id, tab.windowId);
+}
+
+async function onCapture(mode: CaptureMessage['mode']): Promise<void> {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  if (!tab || tab.id === undefined || tab.windowId === undefined) {
+    throw new Error('background: no active tab with an id and windowId');
+  }
+
+  if (mode === 'marked') {
+    // Persist "awaiting region" state BEFORE injecting the overlay. If the
+    // service worker is evicted while the user hesitates mid-drag, the
+    // re-woken worker recovers this state when the 'region' message arrives.
+    const pending: PendingMarked = { windowId: tab.windowId };
+    await browser.storage.session.set({ [pendingMarkedKey(tab.id)]: pending });
+    await injectMarqueeOverlay(tab.id);
+    return;
+  }
+
+  const dataUrl = await runDirectCapture(mode, { id: tab.id, windowId: tab.windowId });
+  await handoffCapture(dataUrl);
+}
+
+async function onRegion(tabId: number, region: RegionMessage): Promise<void> {
+  const key = pendingMarkedKey(tabId);
+  const stored = await browser.storage.session.get(key);
+  const pending = stored[key] as PendingMarked | undefined;
+  if (!pending) {
+    // No marked capture is in progress for this tab (stale or duplicate message).
+    return;
+  }
+  await browser.storage.session.remove(key);
+  const dataUrl = await captureMarkedRegion(pending.windowId, region.rect, region.dpr);
+  await handoffCapture(dataUrl);
+}
+
+async function onRegionCancelled(tabId: number): Promise<void> {
+  await browser.storage.session.remove(pendingMarkedKey(tabId));
+}
+
+browser.runtime.onMessage.addListener((message: unknown, sender: Runtime.MessageSender) => {
+  const msg = message as ExtensionMessage;
+  if (!msg || typeof msg !== 'object') return undefined;
+
+  if (msg.type === 'capture') {
+    // Returning the promise keeps the worker alive until the capture (or, for
+    // 'marked', the overlay injection) settles.
+    return onCapture(msg.mode).catch((err) => reportCaptureError(errorMessage(err)));
+  }
+
+  if (msg.type === 'region') {
+    const tabId = sender.tab?.id;
+    if (tabId === undefined) return undefined;
+    return onRegion(tabId, msg).catch((err) => reportCaptureError(errorMessage(err)));
+  }
+
+  if (msg.type === 'region-cancelled') {
+    const tabId = sender.tab?.id;
+    if (tabId === undefined) return undefined;
+    return onRegionCancelled(tabId);
+  }
+
+  return undefined;
 });

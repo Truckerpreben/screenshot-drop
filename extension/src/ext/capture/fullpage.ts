@@ -77,7 +77,9 @@ async function captureFullPageChromiumViaStitch(tabId: number, windowId: number)
       func: (y: number) => window.scrollTo(0, y),
       args: [offset]
     });
-    await new Promise((r) => setTimeout(r, 500));
+    // 800ms (not 500) to stay under Chrome's ~2 captureVisibleTab/sec quota,
+    // which the tighter interval sat exactly on and intermittently tripped.
+    await new Promise((r) => setTimeout(r, 800));
     const dataUrl = await browser.tabs.captureVisibleTab(windowId, { format: 'png' });
     const blob = await (await fetch(dataUrl)).blob();
     const bitmap = await createImageBitmap(blob);

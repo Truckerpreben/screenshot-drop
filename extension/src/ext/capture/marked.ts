@@ -1,21 +1,6 @@
 import browser from '../browser';
 import type { Rect } from '../../core/geometry';
 import { scaleRect } from '../../core/geometry';
-import type { RegionMessage } from '../messaging';
-
-/** Waits for a single 'region' message from the content script, then resolves its rect/dpr. */
-function waitForRegion(): Promise<RegionMessage> {
-  return new Promise((resolve) => {
-    function listener(message: unknown) {
-      const msg = message as RegionMessage;
-      if (msg && msg.type === 'region') {
-        browser.runtime.onMessage.removeListener(listener);
-        resolve(msg);
-      }
-    }
-    browser.runtime.onMessage.addListener(listener);
-  });
-}
 
 function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -64,18 +49,23 @@ async function cropDataUrl(dataUrl: string, rect: Rect): Promise<string> {
   return (canvas as HTMLCanvasElement).toDataURL('image/png');
 }
 
-/**
- * Injects the marquee overlay into tabId, waits for the user's drag, then
- * captures the visible tab and crops it to the marked region.
- */
-export async function captureMarked(tabId: number, windowId: number): Promise<string> {
+/** Injects the marquee overlay content script into the given tab. */
+export async function injectMarqueeOverlay(tabId: number): Promise<void> {
   await browser.scripting.executeScript({
     target: { tabId },
     files: ['overlay.content.js']
   });
+}
 
-  const region = await waitForRegion();
+/**
+ * Captures the visible tab and crops it to the region the user marked.
+ * Called from the top-level background listener once a 'region' message
+ * arrives, so it works even if the service worker was evicted and re-woken
+ * while the user was dragging (the drag rect/dpr travel in the message and
+ * the windowId is read from persisted state — no in-memory promise needed).
+ */
+export async function captureMarkedRegion(windowId: number, rect: Rect, dpr: number): Promise<string> {
   const dataUrl = await browser.tabs.captureVisibleTab(windowId, { format: 'png' });
-  const deviceRect = scaleRect(region.rect, region.dpr);
+  const deviceRect = scaleRect(rect, dpr);
   return cropDataUrl(dataUrl, deviceRect);
 }

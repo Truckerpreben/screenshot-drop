@@ -3,7 +3,7 @@
   "name": "Screenshot Drop",
   "version": "0.1.0",
   "description": "Capture, annotate, and send screenshots to a LAN destination.",
-  "permissions": ["activeTab", "tabs", "scripting", "storage", "clipboardWrite"],
+  "permissions": ["activeTab", "tabs", "scripting", "storage", "clipboardWrite", "notifications"],
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup.html"
