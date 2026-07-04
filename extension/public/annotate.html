@@ -5,7 +5,17 @@
     <link rel="stylesheet" href="styles/annotate.css" />
   </head>
   <body>
-    <div id="app"></div>
+    <div id="toolbar"></div>
+    <button id="color-toggle" title="Toggle color (c)"></button>
+    <button id="undo">Undo</button>
+    <button id="clear">Clear</button>
+    <canvas id="canvas"></canvas>
+    <div id="save-bar">
+      <input id="shortname" type="text" placeholder="optional short name" />
+      <select id="destination"></select>
+      <button id="save">Save</button>
+    </div>
+    <div id="toast"></div>
     <script src="annotate.entry.js"></script>
   </body>
 </html>

@@ -69,7 +69,7 @@ and the token from `-gen-token` above.
    tab**, or **Marked area** (drag a rectangle).
 2. The capture opens in the annotate view. Draw with arrow, rectangle,
    line, or freehand pen — keys `1`-`4` switch tools, `c` toggles between
-   the two colors. Undo and Clear are toolbar buttons.
+   the two colors. Undo (toolbar or Ctrl+Z) steps back; Clear is a toolbar button.
 3. Pick a destination (the last one used is pre-selected), add an optional
    short name, and click **Save**.
 4. The receiving service's returned absolute path is copied to your

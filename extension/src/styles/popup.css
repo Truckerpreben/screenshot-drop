@@ -1,1 +1,18 @@
-/* popup styles - filled in by Task 10 */
+body {
+  margin: 0;
+  width: 220px;
+  font-family: system-ui, sans-serif;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+button {
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}

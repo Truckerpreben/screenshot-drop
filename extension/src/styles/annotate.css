@@ -1,1 +1,56 @@
-/* annotate styles - filled in by Task 12 */
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #1e1e1e;
+  color: #eee;
+}
+
+#toolbar {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+}
+
+#toolbar button,
+#save-bar button,
+#color-toggle {
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+#color-toggle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid #fff;
+}
+
+canvas {
+  display: block;
+  max-width: 100%;
+  border: 1px solid #444;
+}
+
+#save-bar {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  align-items: center;
+}
+
+#toast {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  background: #333;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+#toast.visible {
+  opacity: 1;
+}

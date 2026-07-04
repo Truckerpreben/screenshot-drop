@@ -5,7 +5,24 @@
     <link rel="stylesheet" href="styles/options.css" />
   </head>
   <body>
-    <div id="app"></div>
+    <h1>Destinations</h1>
+    <table>
+      <thead>
+        <tr><th>Name</th><th>URL</th><th>Token</th><th></th></tr>
+      </thead>
+      <tbody id="destinations-body"></tbody>
+    </table>
+
+    <h2>Add / Edit destination</h2>
+    <form id="destination-form">
+      <input type="hidden" id="form-id" />
+      <label>Name <input id="form-name" type="text" /></label>
+      <label>Service address <input id="form-url" type="text" placeholder="http://10.2.50.13:9922" /></label>
+      <label>Token <input id="form-token" type="text" /></label>
+      <p id="form-error" class="error"></p>
+      <button type="submit">Save destination</button>
+    </form>
+
     <script src="options.entry.js"></script>
   </body>
 </html>
