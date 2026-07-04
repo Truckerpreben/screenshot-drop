@@ -1,21 +1,68 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Screenshot Drop — Annotate</title>
     <link rel="stylesheet" href="styles/annotate.css" />
   </head>
   <body>
-    <div id="toolbar"></div>
-    <button id="color-toggle" title="Toggle color (c)"></button>
-    <button id="undo">Undo</button>
-    <button id="clear">Clear</button>
-    <canvas id="canvas"></canvas>
-    <div id="save-bar">
-      <input id="shortname" type="text" placeholder="optional short name" />
-      <select id="destination"></select>
-      <button id="save">Save</button>
-    </div>
-    <div id="toast"></div>
+    <header class="anno-toolbar">
+      <div class="anno-brand" aria-hidden="true">
+        <span class="app-mark">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="14" rx="2.5" />
+            <path d="M3 15l4.5-4.5a2 2 0 0 1 2.8 0L16 16" />
+            <circle cx="9" cy="9" r="1.4" />
+            <path d="M12 21h6M15 18v6" />
+          </svg>
+        </span>
+      </div>
+
+      <div class="anno-divider" aria-hidden="true"></div>
+
+      <div id="toolbar" class="anno-group" role="toolbar" aria-label="Annotation tools"></div>
+
+      <div class="anno-divider" aria-hidden="true"></div>
+
+      <div class="anno-group">
+        <button id="color-toggle" class="color-swatch" type="button" title="Toggle color (c)" aria-label="Toggle annotation color (c)"></button>
+      </div>
+
+      <div class="anno-divider" aria-hidden="true"></div>
+
+      <div class="anno-group">
+        <button id="undo" class="icon-btn" type="button" title="Undo (Ctrl+Z)">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-1" /></svg>
+          <span>Undo</span>
+        </button>
+        <button id="clear" class="icon-btn" type="button" title="Clear all annotations">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" /></svg>
+          <span>Clear</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="anno-workspace">
+      <canvas id="canvas"></canvas>
+    </main>
+
+    <footer id="save-bar">
+      <div class="save-field">
+        <label for="destination">Destination</label>
+        <select id="destination"></select>
+      </div>
+      <div class="save-field save-field--grow">
+        <label for="shortname">Short name</label>
+        <input id="shortname" type="text" autocomplete="off" spellcheck="false" placeholder="optional short name" />
+      </div>
+      <button id="save" class="btn btn--primary" type="button">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><path d="M17 21v-8H7v8M7 3v5h8" /></svg>
+        <span>Save</span>
+      </button>
+    </footer>
+
+    <div id="toast" role="status" aria-live="polite"></div>
     <script src="annotate.entry.js"></script>
   </body>
 </html>

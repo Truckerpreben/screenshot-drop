@@ -1,14 +1,75 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="styles/popup.css" />
   </head>
   <body>
     <div id="app">
-      <button id="capture-full">Full page</button>
-      <button id="capture-visible">Visible tab</button>
-      <button id="capture-marked">Marked area</button>
+      <header class="app-header">
+        <span class="app-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="14" rx="2.5" />
+            <path d="M3 15l4.5-4.5a2 2 0 0 1 2.8 0L16 16" />
+            <circle cx="9" cy="9" r="1.4" />
+            <path d="M12 21h6M15 18v6" />
+          </svg>
+        </span>
+        <span class="app-title">Screenshot Drop</span>
+      </header>
+
+      <p class="app-lead">Capture a screenshot and send it to a destination.</p>
+
+      <div class="mode-list" role="group" aria-label="Capture mode">
+        <button id="capture-full" type="button" class="mode-btn">
+          <span class="mode-btn__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="2.5" width="14" height="19" rx="2.5" />
+              <path d="M9 7h6M9 11h6M9 15h4" />
+            </svg>
+          </span>
+          <span class="mode-btn__text">
+            <span class="mode-btn__title">Full page</span>
+            <span class="mode-btn__desc">The entire scrollable page</span>
+          </span>
+          <span class="mode-btn__chevron" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+          </span>
+        </button>
+
+        <button id="capture-visible" type="button" class="mode-btn">
+          <span class="mode-btn__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2.5" y="4.5" width="19" height="13" rx="2.5" />
+              <path d="M8 21h8M12 17.5V21" />
+            </svg>
+          </span>
+          <span class="mode-btn__text">
+            <span class="mode-btn__title">Visible tab</span>
+            <span class="mode-btn__desc">What's currently on screen</span>
+          </span>
+          <span class="mode-btn__chevron" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+          </span>
+        </button>
+
+        <button id="capture-marked" type="button" class="mode-btn">
+          <span class="mode-btn__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 2.5v4M6 17.5v4M2.5 6h4M17.5 6h4M2.5 18h4M17.5 18h4M18 2.5v4M18 17.5v4" />
+              <rect x="6" y="6" width="12" height="12" rx="1.5" stroke-dasharray="2.5 3" />
+            </svg>
+          </span>
+          <span class="mode-btn__text">
+            <span class="mode-btn__title">Marked area</span>
+            <span class="mode-btn__desc">Select a region to capture</span>
+          </span>
+          <span class="mode-btn__chevron" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+          </span>
+        </button>
+      </div>
     </div>
     <script src="popup.entry.js"></script>
   </body>
