@@ -27,6 +27,9 @@ export function stitchTiles(ctx: Ctx2D, tiles: Tile[], totalWidth: number, total
  * last full-step offset already produced.
  */
 export function planScrollCapture(viewportHeight: number, totalHeight: number): number[] {
+  if (viewportHeight <= 0) {
+    return [0];
+  }
   if (totalHeight <= viewportHeight) {
     return [0];
   }

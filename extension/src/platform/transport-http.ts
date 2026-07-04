@@ -7,9 +7,11 @@ export class HttpTransport implements Transport {
     form.append('image', png, 'shot.png');
     form.append('shortname', shortname);
 
+    const base = dest.url.replace(/\/+$/, '');
+
     let response: Response;
     try {
-      response = await fetch(`${dest.url}/upload`, {
+      response = await fetch(`${base}/upload`, {
         method: 'POST',
         headers: { 'X-Snapdrop-Token': dest.token },
         body: form

@@ -31,6 +31,19 @@ describe('HttpTransport.upload', () => {
     expect(result).toEqual({ path: '/abs/shot.png', filename: 'shot.png', bytes: 5 });
   });
 
+  it('normalizes a destination URL with a trailing slash to a single-slash join', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ path: '/abs/shot.png', filename: 'shot.png', bytes: 5 }), { status: 200 })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const slashDest: Destination = { ...dest, url: 'http://host:9922/' };
+    await new HttpTransport().upload(slashDest, png, '');
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toBe('http://host:9922/upload');
+  });
+
   it('throws an auth UploadError on 401', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 401 })));
     await expect(new HttpTransport().upload(dest, png, '')).rejects.toMatchObject({ kind: 'auth' });

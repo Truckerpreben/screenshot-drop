@@ -7,6 +7,10 @@ describe('planScrollCapture', () => {
     expect(planScrollCapture(800, 500)).toEqual([0]);
   });
 
+  it('returns [0] without hanging when the viewport height is zero', () => {
+    expect(planScrollCapture(0, 1000)).toEqual([0]);
+  });
+
   it('handles a page height that is an exact multiple of the viewport height', () => {
     expect(planScrollCapture(500, 1500)).toEqual([0, 500, 1000]);
   });
