@@ -35,6 +35,14 @@ func (h *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "malformed multipart body")
 		return
 	}
+	// Clean up any temp files multipart parsing spilled to disk when the
+	// upload exceeds the in-memory buffer (relevant if -max-bytes is raised
+	// above maxMemoryMultipart).
+	defer func() {
+		if r.MultipartForm != nil {
+			_ = r.MultipartForm.RemoveAll()
+		}
+	}()
 
 	file, _, err := r.FormFile("image")
 	if err != nil {

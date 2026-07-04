@@ -66,6 +66,20 @@ func TestAuthMiddlewareHandlesPreflight(t *testing.T) {
 	}
 }
 
+func TestAuthMiddlewareRejectsEmptyConfiguredToken(t *testing.T) {
+	// Defense-in-depth: a server misconfigured with an empty token must not
+	// accept requests that also send an empty/missing token.
+	mw := AuthMiddleware("", okHandler())
+	req := httptest.NewRequest(http.MethodPost, "/upload", nil)
+	req.Header.Set("Origin", "chrome-extension://abc123")
+	// Deliberately no X-Snapdrop-Token header.
+	rec := httptest.NewRecorder()
+	mw.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+}
+
 func TestAuthMiddlewareNeverUsesWildcardCORS(t *testing.T) {
 	mw := AuthMiddleware("secret", okHandler())
 	req := httptest.NewRequest(http.MethodPost, "/upload", nil)

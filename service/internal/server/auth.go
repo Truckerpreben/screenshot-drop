@@ -49,7 +49,7 @@ func AuthMiddleware(token string, next http.Handler) http.Handler {
 		}
 
 		reqToken := r.Header.Get("X-Snapdrop-Token")
-		if subtle.ConstantTimeCompare([]byte(reqToken), []byte(token)) != 1 {
+		if token == "" || subtle.ConstantTimeCompare([]byte(reqToken), []byte(token)) != 1 {
 			writeJSONError(w, http.StatusUnauthorized, "invalid or missing token")
 			return
 		}

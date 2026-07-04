@@ -2,10 +2,12 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 )
@@ -41,16 +43,36 @@ func NewMux(token, dir string) *http.ServeMux {
 	return mux
 }
 
+// prepareDir resolves dir to an absolute path and ensures it exists as a
+// usable directory, so startup fails fast rather than the first upload. This
+// also pins the relative default ("./screenshots") to an absolute path at
+// startup instead of resolving it against the process CWD per-request.
+func prepareDir(dir string) (string, error) {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return "", fmt.Errorf("server: cannot resolve save dir %q: %w", dir, err)
+	}
+	if err := os.MkdirAll(abs, 0755); err != nil {
+		return "", fmt.Errorf("server: cannot create save dir %q: %w", abs, err)
+	}
+	return abs, nil
+}
+
 // NewServer wires the full middleware chain (recover -> maxbytes -> mux)
-// around the routing table.
-func NewServer(addr, token, dir string, maxBytes int64) *http.Server {
-	mux := NewMux(token, dir)
+// around the routing table. It validates the save directory up front,
+// returning an error if it cannot be resolved or created.
+func NewServer(addr, token, dir string, maxBytes int64) (*http.Server, error) {
+	absDir, err := prepareDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	mux := NewMux(token, absDir)
 	handler := RecoverMiddleware(MaxBytesMiddleware(maxBytes, mux))
 	return &http.Server{
 		Addr:              addr,
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
-	}
+	}, nil
 }
 
 // Run starts srv and blocks until SIGINT/SIGTERM, then shuts it down gracefully.

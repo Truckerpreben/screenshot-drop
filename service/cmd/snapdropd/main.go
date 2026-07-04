@@ -25,7 +25,10 @@ func main() {
 		log.Fatalf("config error: %v", err)
 	}
 
-	srv := server.NewServer(cfg.Addr, cfg.Token, cfg.Dir, cfg.MaxBytes)
+	srv, err := server.NewServer(cfg.Addr, cfg.Token, cfg.Dir, cfg.MaxBytes)
+	if err != nil {
+		log.Fatalf("server error: %v", err)
+	}
 	if err := server.Run(srv); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
