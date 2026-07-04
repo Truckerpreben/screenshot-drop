@@ -1,0 +1,20 @@
+[Unit]
+Description=Screenshot Drop receiving service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hcadmin
+Group=hcadmin
+EnvironmentFile=/etc/snapdrop/snapdrop.env
+ExecStart=/usr/local/bin/snapdropd
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/home/hcadmin/screenshots
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
