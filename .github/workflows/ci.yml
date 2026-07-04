@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  service:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - name: go vet
+        working-directory: service
+        run: go vet ./...
+      - name: go test
+        working-directory: service
+        run: go test ./... -count=1
+
+  extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+      - name: npm ci
+        working-directory: extension
+        run: npm ci
+      - name: typecheck
+        working-directory: extension
+        run: npx tsc --noEmit
+      - name: unit tests
+        working-directory: extension
+        run: npx vitest run
+      - name: build
+        working-directory: extension
+        # Also runs esbuild.config.mjs's post-build assertion that the
+        # Firefox bundle contains no "chrome.debugger" (the per-target
+        # dead-code elimination that keeps Chromium-only code out of the
+        # Firefox build) — a build failure here fails CI, which is the
+        # point: it's the regression guard for that dead-code split.
+        run: npm run build
