@@ -5,6 +5,13 @@ import type { Destination } from '../platform/transport';
 function validate(name: string, url: string): string | null {
   if (name.trim() === '') return 'Name is required.';
   if (!url.startsWith('http://')) return 'Service address must start with http://';
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return 'Service address is not a valid URL.';
+  }
+  if (!parsed.host) return 'Service address must include a host (e.g. http://10.2.50.13:9922).';
   return null;
 }
 
@@ -74,8 +81,8 @@ async function main(): Promise<void> {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = (document.getElementById('form-id') as HTMLInputElement).value;
-    const name = (document.getElementById('form-name') as HTMLInputElement).value;
-    const url = (document.getElementById('form-url') as HTMLInputElement).value;
+    const name = (document.getElementById('form-name') as HTMLInputElement).value.trim();
+    const url = (document.getElementById('form-url') as HTMLInputElement).value.trim();
     const token = (document.getElementById('form-token') as HTMLInputElement).value;
 
     const error = validate(name, url);

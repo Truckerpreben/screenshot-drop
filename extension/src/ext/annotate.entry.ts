@@ -40,6 +40,25 @@ function showToast(message: string): void {
   setTimeout(() => toast.classList.remove('visible'), 4000);
 }
 
+/**
+ * Renders a terminal error state: hides the editing UI and shows a single
+ * centered message. Used when there's no capture to annotate (page opened
+ * directly, session entry expired) or the background reported a capture error.
+ */
+function showFatal(message: string): void {
+  for (const id of ['toolbar', 'color-toggle', 'undo', 'clear', 'canvas', 'save-bar', 'toast']) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  }
+  let fatal = document.getElementById('fatal');
+  if (!fatal) {
+    fatal = document.createElement('div');
+    fatal.id = 'fatal';
+    document.body.appendChild(fatal);
+  }
+  fatal.textContent = message;
+}
+
 async function populateDestinations(select: HTMLSelectElement, store: WebextStore): Promise<void> {
   const destinations = await store.list();
   select.innerHTML = '';
@@ -61,9 +80,23 @@ function toCanvasPoint(canvas: HTMLCanvasElement, e: PointerEvent): { x: number;
 }
 
 async function main(): Promise<void> {
-  const id = getCaptureId();
-  const dataUrl = await loadCapture(id);
-  const image = await loadImage(dataUrl);
+  const params = new URLSearchParams(window.location.search);
+  const errorParam = params.get('error');
+  if (errorParam) {
+    showFatal(errorParam);
+    return;
+  }
+
+  let image: HTMLImageElement;
+  try {
+    const id = getCaptureId();
+    const dataUrl = await loadCapture(id);
+    image = await loadImage(dataUrl);
+  } catch (err) {
+    console.error('screenshot-drop: could not load capture', err);
+    showFatal('Capture not found or expired — take a new screenshot.');
+    return;
+  }
 
   const canvas = document.getElementById('canvas') as HTMLCanvasElement;
   canvas.width = image.naturalWidth;
@@ -113,6 +146,8 @@ async function main(): Promise<void> {
       undo();
       return;
     }
+    // Don't hijack other modified keystrokes (Ctrl+C copy, Ctrl+1 tab switch, etc.).
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     const tool = toolForKey(e.key);
     if (tool) editor.setTool(tool);
     if (e.key === 'c') {
@@ -129,13 +164,24 @@ async function main(): Promise<void> {
       return;
     }
 
+    // Prevent a double-click from uploading twice (which saves a -2 duplicate).
+    saveButton.disabled = true;
     try {
       const blob = await editor.toBlob();
       const transport = new HttpTransport();
       const result = await transport.upload(dest, blob, shortnameInput.value);
       await store.setLastUsedId(dest.id);
-      await navigator.clipboard.writeText(result.path);
-      showToast(`Saved: ${result.path} (copied to clipboard)`);
+      // The upload succeeded — always report success. The clipboard copy is a
+      // best-effort convenience; if it fails (e.g. the Save-click's user
+      // activation expired during the round-trip) the file is still saved.
+      showToast(`Saved: ${result.path}`);
+      try {
+        await navigator.clipboard.writeText(result.path);
+        showToast(`Saved: ${result.path} (copied to clipboard)`);
+      } catch (clipErr) {
+        showToast(`Saved: ${result.path} (copy the path above manually)`);
+        console.error('screenshot-drop: clipboard write failed', clipErr);
+      }
     } catch (err) {
       if (err instanceof UploadError) {
         if (err.kind === 'auth') showToast('Auth failed — check the token in Options.');
@@ -146,6 +192,8 @@ async function main(): Promise<void> {
         showToast('Save failed — see console for details.');
       }
       console.error('screenshot-drop: save failed', err);
+    } finally {
+      saveButton.disabled = false;
     }
   });
 }
