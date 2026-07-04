@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Screenshot Drop",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Capture, annotate, and send screenshots to a LAN destination.",
   "permissions": ["activeTab", "tabs", "scripting", "storage", "clipboardWrite", "notifications"],
   "host_permissions": ["<all_urls>"],
