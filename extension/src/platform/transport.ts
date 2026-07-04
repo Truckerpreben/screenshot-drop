@@ -25,4 +25,6 @@ export class UploadError extends Error {
 
 export interface Transport {
   upload(dest: Destination, png: Blob, shortname: string): Promise<UploadResult>;
+  /** Verifies a destination is reachable and the token is accepted. Resolves on success. */
+  ping(dest: Destination): Promise<void>;
 }

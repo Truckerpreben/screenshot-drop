@@ -2,12 +2,37 @@ import type { Destination, Transport, UploadResult } from './transport';
 import { UploadError } from './transport';
 
 export class HttpTransport implements Transport {
+  /** Strips trailing slashes so path joins produce a single separator. */
+  private baseUrl(dest: Destination): string {
+    return dest.url.replace(/\/+$/, '');
+  }
+
+  async ping(dest: Destination): Promise<void> {
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl(dest)}/ping`, {
+        method: 'GET',
+        headers: { 'X-Snapdrop-Token': dest.token }
+      });
+    } catch {
+      throw new UploadError('network', `Could not reach ${dest.name} at ${dest.url}`);
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      throw new UploadError('auth', `${dest.name} rejected the request (check the token)`);
+    }
+
+    if (!response.ok) {
+      throw new UploadError('server', `${dest.name} returned status ${response.status}`);
+    }
+  }
+
   async upload(dest: Destination, png: Blob, shortname: string): Promise<UploadResult> {
     const form = new FormData();
     form.append('image', png, 'shot.png');
     form.append('shortname', shortname);
 
-    const base = dest.url.replace(/\/+$/, '');
+    const base = this.baseUrl(dest);
 
     let response: Response;
     try {

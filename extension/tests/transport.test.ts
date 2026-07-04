@@ -74,3 +74,49 @@ describe('HttpTransport.upload', () => {
     await expect(new HttpTransport().upload(dest, png, '')).rejects.toBeInstanceOf(UploadError);
   });
 });
+
+describe('HttpTransport.ping', () => {
+  it('GETs <url>/ping with the token header and resolves on 200', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: 'ok', version: '0.2.0' }), { status: 200 })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(new HttpTransport().ping(dest)).resolves.toBeUndefined();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('http://10.2.50.13:9922/ping');
+    expect(init.method).toBe('GET');
+    expect(init.headers['X-Snapdrop-Token']).toBe('tok123');
+  });
+
+  it('normalizes a destination URL with a trailing slash to a single-slash join', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await new HttpTransport().ping({ ...dest, url: 'http://host:9922/' });
+
+    expect(fetchMock.mock.calls[0][0]).toBe('http://host:9922/ping');
+  });
+
+  it('throws an auth UploadError on 401', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 401 })));
+    await expect(new HttpTransport().ping(dest)).rejects.toMatchObject({ kind: 'auth' });
+  });
+
+  it('throws an auth UploadError on 403', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 403 })));
+    await expect(new HttpTransport().ping(dest)).rejects.toMatchObject({ kind: 'auth' });
+  });
+
+  it('throws a network UploadError when fetch rejects', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('fetch failed')));
+    await expect(new HttpTransport().ping(dest)).rejects.toMatchObject({ kind: 'network' });
+  });
+
+  it('throws a server UploadError on 500', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 500 })));
+    await expect(new HttpTransport().ping(dest)).rejects.toMatchObject({ kind: 'server' });
+  });
+});
