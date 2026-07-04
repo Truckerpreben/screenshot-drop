@@ -140,8 +140,8 @@ func TestHealthz(t *testing.T) {
 	if resp.Status != "ok" {
 		t.Errorf("status field = %q, want ok", resp.Status)
 	}
-	if resp.Version != "0.1.0" {
-		t.Errorf("version field = %q, want 0.1.0", resp.Version)
+	if resp.Version != "0.2.0" {
+		t.Errorf("version field = %q, want 0.2.0", resp.Version)
 	}
 }
 
