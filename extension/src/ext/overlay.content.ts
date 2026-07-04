@@ -27,13 +27,46 @@ function installOverlay(): void {
     display: 'none'
   });
   overlay.appendChild(marquee);
+
+  // A small dark chip showing the live selection size in CSS px. As a child of
+  // the overlay it is torn down automatically whenever removeOverlay() runs
+  // (mouseup, Escape) — no separate cleanup needed.
+  const label = document.createElement('div');
+  Object.assign(label.style, {
+    position: 'fixed',
+    display: 'none',
+    padding: '2px 6px',
+    background: 'rgba(0, 0, 0, 0.75)',
+    color: '#fff',
+    font: '12px ui-monospace, SFMono-Regular, Menlo, monospace',
+    borderRadius: '3px',
+    pointerEvents: 'none',
+    whiteSpace: 'nowrap',
+    zIndex: '2147483647'
+  });
+  overlay.appendChild(label);
   document.documentElement.appendChild(overlay);
 
   let start: { x: number; y: number } | null = null;
 
+  /** Places the label near the cursor, offset so it isn't hidden under the pointer, clamped to the viewport. */
+  function positionLabel(px: number, py: number): void {
+    const offset = 12;
+    const rect = label.getBoundingClientRect();
+    let lx = px + offset;
+    let ly = py + offset;
+    if (lx + rect.width > window.innerWidth) lx = px - offset - rect.width;
+    if (ly + rect.height > window.innerHeight) ly = py - offset - rect.height;
+    label.style.left = `${Math.max(0, lx)}px`;
+    label.style.top = `${Math.max(0, ly)}px`;
+  }
+
   function onMouseDown(e: MouseEvent): void {
     start = { x: e.clientX, y: e.clientY };
     marquee.style.display = 'block';
+    label.textContent = '0 × 0';
+    label.style.display = 'block';
+    positionLabel(e.clientX, e.clientY);
   }
 
   function onMouseMove(e: MouseEvent): void {
@@ -48,6 +81,8 @@ function installOverlay(): void {
       width: `${width}px`,
       height: `${height}px`
     });
+    label.textContent = `${width} × ${height}`;
+    positionLabel(e.clientX, e.clientY);
   }
 
   async function onMouseUp(e: MouseEvent): Promise<void> {
