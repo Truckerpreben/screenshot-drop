@@ -4,3 +4,4 @@ extension/dist/
 service/bin/
 *.log
 .DS_Store
+service/snapdropd
