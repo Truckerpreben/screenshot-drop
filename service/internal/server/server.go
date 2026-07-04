@@ -39,6 +39,7 @@ func MaxBytesMiddleware(maxBytes int64, next http.Handler) http.Handler {
 func NewMux(token, dir string) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("/upload", AuthMiddleware(token, NewUploadHandler(dir)))
+	mux.Handle("/ping", AuthMiddleware(token, http.HandlerFunc(PingHandler)))
 	mux.HandleFunc("/healthz", HealthzHandler)
 	return mux
 }

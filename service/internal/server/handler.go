@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"path/filepath"
 	"time"
+
+	"snapdrop/service/internal/version"
 )
 
 const maxMemoryMultipart = 32 << 20 // in-memory threshold for multipart parsing
@@ -80,7 +82,21 @@ func (h *UploadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func HealthzHandler(w http.ResponseWriter, r *http.Request) {
+	writeStatusJSON(w)
+}
+
+// PingHandler is the authenticated counterpart to /healthz, used by the
+// extension's "test connection" button (it runs behind AuthMiddleware).
+func PingHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	writeStatusJSON(w)
+}
+
+func writeStatusJSON(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok", "version": "0.1.0"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok", "version": version.Version})
 }
