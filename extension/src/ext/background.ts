@@ -3,17 +3,19 @@ import type { CaptureMessage } from './messaging';
 import { captureStorageKey } from './messaging';
 import { captureVisible } from './capture/visible';
 import { captureMarked } from './capture/marked';
+import { captureFullPage } from './capture/fullpage';
 
 async function runCapture(mode: CaptureMessage['mode'], tab: { id?: number; windowId?: number }): Promise<string> {
   if (tab.windowId === undefined) throw new Error('background: active tab has no windowId');
-  if (mode === 'visible') {
-    return captureVisible(tab.windowId);
+  if (tab.id === undefined) throw new Error('background: active tab has no id');
+  switch (mode) {
+    case 'visible':
+      return captureVisible(tab.windowId);
+    case 'marked':
+      return captureMarked(tab.id, tab.windowId);
+    case 'full':
+      return captureFullPage(tab.id, tab.windowId);
   }
-  if (mode === 'marked') {
-    if (tab.id === undefined) throw new Error('background: active tab has no id');
-    return captureMarked(tab.id, tab.windowId);
-  }
-  throw new Error(`background: mode "${mode}" is added in Task 11`);
 }
 
 browser.runtime.onMessage.addListener((message: unknown) => {

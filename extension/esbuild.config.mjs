@@ -68,6 +68,11 @@ async function buildTarget(target) {
     format: 'iife',
     target: 'es2020',
     define: { __TARGET__: JSON.stringify(target) },
+    // Constant-fold the __TARGET__ define and drop the resulting dead branches
+    // so per-target code (e.g. Chromium's chrome.debugger path) is eliminated
+    // from the other target's bundle. minifySyntax only does semantics-preserving
+    // syntax optimizations — no identifier renaming, so bundles stay readable.
+    minifySyntax: true,
     logLevel: 'info'
   });
 
