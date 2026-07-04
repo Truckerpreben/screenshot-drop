@@ -411,6 +411,72 @@ code.code {
   color: var(--fg-muted);
 }
 
+/* Range slider — token-driven track + thumb for both WebKit and Firefox */
+.range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 88px;
+  height: 18px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--border-hover);
+}
+
+.range::-moz-range-track {
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--border-hover);
+}
+
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--border-hover), var(--e1);
+  transition: transform 0.1s ease, box-shadow 0.13s ease;
+}
+
+.range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--border-hover), var(--e1);
+  transition: transform 0.1s ease, box-shadow 0.13s ease;
+}
+
+.range:hover::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+
+.range:hover::-moz-range-thumb {
+  transform: scale(1.12);
+}
+
+.range:focus-visible {
+  outline: none;
+}
+
+.range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 1px var(--border-hover), 0 0 0 4px var(--ring);
+}
+
+.range:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 1px var(--border-hover), 0 0 0 4px var(--ring);
+}
+
 /* Spinner (used for in-flight buttons) */
 .spinner {
   width: 16px;

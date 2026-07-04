@@ -182,6 +182,21 @@ async function main(): Promise<void> {
     colorButton.style.backgroundColor = editor.currentColor;
   });
 
+  // Stroke-thickness slider. Reads editor.currentStrokeWidth for its initial
+  // position, then pushes changes forward; width is stamped per-annotation at
+  // creation, so this affects subsequent strokes only.
+  const strokeInput = document.getElementById('stroke-width') as HTMLInputElement;
+  const strokeValue = document.getElementById('stroke-width-val');
+  const syncStroke = (): void => {
+    if (strokeValue) strokeValue.textContent = String(editor.currentStrokeWidth);
+  };
+  strokeInput.value = String(editor.currentStrokeWidth);
+  syncStroke();
+  strokeInput.addEventListener('input', () => {
+    editor.setStrokeWidth(Number(strokeInput.value));
+    syncStroke();
+  });
+
   const undo = () => editor.undo();
   document.getElementById('undo')?.addEventListener('click', undo);
   document.getElementById('clear')?.addEventListener('click', () => editor.clear());

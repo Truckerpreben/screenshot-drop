@@ -160,6 +160,23 @@ body {
   box-shadow: 0 0 0 1px var(--border-hover), 0 0 0 4px var(--ring);
 }
 
+/* Stroke-thickness control */
+.thickness {
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.thickness__icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--fg-subtle);
+}
+
+.thickness__val {
+  min-width: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Undo / Clear text buttons */
 .tool-text {
   display: inline-flex;
