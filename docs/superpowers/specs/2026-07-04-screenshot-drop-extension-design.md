@@ -58,23 +58,20 @@ The last-used location is remembered and pre-selected.
 
 ## How the file actually reaches Computer B (implementation — not a user concern)
 
-A browser extension is sandboxed: it cannot open a raw network connection to another
-machine and cannot write to an arbitrary disk path on its own. So "save to a folder on
-Computer B" needs a real mechanism underneath. This is an **implementation choice made
-at build time**, invisible in the user flow above. The realistic options, to be
-decided in the implementation plan:
+Hard constraints, non-negotiable:
 
-- **File System Access grant (Brave/Chromium):** you grant the extension a folder once;
-  that folder is a network share already mounted on Computer A that points at Computer
-  B. The extension writes into it; the OS moves the bytes. Firefox lacks this API and
-  falls back to a Downloads-subfolder symlink.
-- **Companion helper on Computer A:** a tiny native-messaging helper (installed only on
-  the browser machine, not on the receiving machines) that receives the image from the
-  extension and writes it to Computer B over the network (share, SCP, etc.).
+- **Nothing is mounted on Computer A.** No mounted drives, no mounted shares, no
+  File-System-Access-into-a-mount. Computer A does not mount anything.
+- **Nothing is installed on the receiving machine (Computer B)** beyond you enabling a
+  shared folder on it, which you already do.
 
-Both deliver the exact flow above. The transport is picked during planning based on
-which is least fragile across Brave + Firefox on your setup. **No software is required
-on the receiving machines.**
+Within those constraints, the extension sends the image **directly over the network** to
+the shared folder on Computer B (e.g. an SMB/network share you created on B) and writes
+the file there. The destination and its path are what you configured for that location.
+
+The exact wiring that lets the extension push bytes over the network (a small companion
+that runs **on Computer A only**, speaking to B's share) is an implementation detail
+decided in the plan. It never mounts anything and never touches Computer B.
 
 ## Annotation tools (scope)
 
@@ -106,8 +103,7 @@ sync, image editing beyond the above.
 
 ## Open questions (for planning)
 
-1. Transport mechanism (File System Access vs. companion helper) — pick per fragility.
-2. Firefox parity: confirm the Downloads-subfolder fallback is acceptable, or require
-   the companion helper on the browser machine for both browsers (more uniform).
-3. Do you want capture of a selected region of the tab, or always the full visible tab?
+1. Firefox vs. Brave: confirm both can drive the chosen network-push mechanism the same
+   way (no mounting, no receiving-machine install in either).
+2. Do you want capture of a selected region of the tab, or always the full visible tab?
 ```
