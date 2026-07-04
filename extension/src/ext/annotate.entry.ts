@@ -221,11 +221,13 @@ async function main(): Promise<void> {
 
   // --- Text tool: a single floating input placed at the click point. ---
   const frame = document.querySelector('.stage__frame') as HTMLElement;
-  let activeText: HTMLInputElement | null = null;
+  let activeCommit: (() => void) | null = null;
 
   const openTextInput = (e: PointerEvent): void => {
-    // Only one input at a time — opening another commits the first (via its blur).
-    if (activeText) activeText.blur();
+    // Only one input at a time — opening another commits the first. Drive this
+    // off the stored commit (not blur), since focus is deferred below and the
+    // prior input may not be focused yet.
+    activeCommit?.();
 
     const anchor = toCanvasPoint(canvas, e);
     const frameRect = frame.getBoundingClientRect();
@@ -242,20 +244,28 @@ async function main(): Promise<void> {
     input.style.fontSize = `${Math.max(11, (8 + editor.currentStrokeWidth * 3) * displayRatio)}px`;
     input.style.color = editor.currentColor;
 
+    const createdAt = Date.now();
     let settled = false;
+    const finish = (): void => {
+      input.remove();
+      if (activeCommit === commit) activeCommit = null;
+    };
     const commit = (): void => {
       if (settled) return;
       settled = true;
       const value = input.value;
-      input.remove();
-      if (activeText === input) activeText = null;
-      editor.addText(anchor, value); // ignores empty/whitespace
+      finish();
+      // Belt-and-braces against the focus-steal flash: an empty commit within
+      // 200ms of creation is the artifact, not a real entry — drop it silently.
+      // (addText ignores empty/whitespace anyway, so real empty entries are
+      // no-ops either way; this only guards the instant-blur edge.)
+      if (!value.trim() && Date.now() - createdAt < 200) return;
+      editor.addText(anchor, value);
     };
     const cancel = (): void => {
       if (settled) return;
       settled = true;
-      input.remove();
-      if (activeText === input) activeText = null;
+      finish();
     };
 
     input.addEventListener('keydown', (ke) => {
@@ -269,13 +279,19 @@ async function main(): Promise<void> {
     });
     input.addEventListener('blur', commit);
 
-    activeText = input;
+    activeCommit = commit;
     frame.appendChild(input);
-    input.focus();
+    // Defer focus past the current gesture so the default post-pointerdown
+    // focus change (which would otherwise blur and remove this input) can't
+    // steal it. Paired with preventDefault() on the pointerdown below.
+    requestAnimationFrame(() => input.focus());
   };
 
   canvas.addEventListener('pointerdown', (e) => {
     if (editor.currentTool === 'text') {
+      // Suppress the browser's default focus move that would instantly blur
+      // (and thus discard) the input we're about to create and focus.
+      e.preventDefault();
       openTextInput(e);
       return;
     }
