@@ -2112,12 +2112,12 @@ export function nextColor(current: string): ColorValue {
 - [ ] **Step 12: Run and confirm pass**
 
 Run: `cd extension && npx vitest run tests/tools.test.ts`
-Expected: PASS (5 tests).
+Expected: PASS (6 tests).
 
 - [ ] **Step 13: Run the full core test suite and typecheck**
 
 Run: `cd extension && npx vitest run tests/geometry.test.ts tests/annotations.test.ts tests/tools.test.ts && npm run typecheck`
-Expected: all 17 tests PASS; `tsc --noEmit` reports no errors.
+Expected: all 18 tests PASS (7 geometry + 5 annotations + 6 tools); `tsc --noEmit` reports no errors.
 
 - [ ] **Step 14: Commit**
 
@@ -2476,6 +2476,17 @@ export interface AnnotationEditorOptions {
 type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
 /**
+ * Gets a 2d context from a canvas that may be either an HTMLCanvasElement or
+ * an OffscreenCanvas. TypeScript cannot call the overloaded `getContext`
+ * directly on that union type (each side declares a different overload
+ * list, so the union has no compatible call signature) — this casts the
+ * receiver to a single concrete type first so the call type-checks.
+ */
+export function get2DContext(canvas: HTMLCanvasElement | OffscreenCanvas): Ctx2D | null {
+  return (canvas as HTMLCanvasElement).getContext('2d') as Ctx2D | null;
+}
+
+/**
  * Drives freehand/shape annotation over a base image on a canvas.
  * Framework-free: no browser-extension APIs, only DOM/canvas primitives
  * (so it can host inside a Wails webview unchanged).
@@ -2493,9 +2504,9 @@ export class AnnotationEditor {
   constructor(opts: AnnotationEditorOptions) {
     this.canvas = opts.canvas;
     this.image = opts.image;
-    const ctx = this.canvas.getContext('2d');
+    const ctx = get2DContext(this.canvas);
     if (!ctx) throw new Error('AnnotationEditor: could not get 2d context');
-    this.ctx = ctx as Ctx2D;
+    this.ctx = ctx;
     this.redraw();
   }
 
@@ -2567,6 +2578,8 @@ export class AnnotationEditor {
 
 Run: `cd extension && npx vitest run tests/editor.test.ts`
 Expected: PASS (8 tests).
+
+> **Note:** `editor.ts` exports a small `get2DContext()` helper instead of calling `canvas.getContext('2d')` directly on the `HTMLCanvasElement | OffscreenCanvas` union — TypeScript rejects calling an overloaded method directly on a union whose members have different overload lists (TS2349). `get2DContext` casts the receiver to a single concrete type first, then casts the result back to the shared `Ctx2D` union. The same problem and the same fix (duplicated locally, not imported) appears in `capture/marked.ts`'s `cropDataUrl` in Task 10.
 
 - [ ] **Step 10: Write the failing stitch tests (pure plan/math + stub-recorded draw calls)**
 
@@ -2691,7 +2704,7 @@ Expected: PASS (6 tests).
 - [ ] **Step 14: Run the full extension test suite and typecheck**
 
 Run: `cd extension && npm test && npm run typecheck`
-Expected: all tests across `tests/` PASS (37 total so far); typecheck clean.
+Expected: all tests across `tests/` PASS (36 total so far: 18 from Task 7 + 4 renderer + 8 editor + 6 stitch); typecheck clean.
 
 > **Deviation from the architecture doc:** `stitchTiles`'s signature is `(ctx, tiles, totalWidth, totalHeight, dpr)` rather than `(tiles, totalWidth, totalHeight, dpr)` with an implicit canvas. The function must draw onto a caller-provided canvas/context (as the architecture doc itself says: "draws onto provided canvas/ctx"), so a `ctx` parameter is required; it is placed first to match the common `ctx`-leading convention used by `render()` in this same file set.
 
@@ -3037,7 +3050,7 @@ Expected: PASS (6 tests).
 - [ ] **Step 11: Run the full extension test suite and typecheck**
 
 Run: `cd extension && npm test && npm run typecheck`
-Expected: all tests PASS (50 total so far); typecheck clean.
+Expected: all tests PASS (49 total so far: 36 from Tasks 7-8 + 7 transport + 6 store); typecheck clean.
 
 - [ ] **Step 12: Commit**
 
@@ -3243,6 +3256,21 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+
+/**
+ * Gets a 2d context from a canvas that may be either an HTMLCanvasElement or
+ * an OffscreenCanvas. TypeScript cannot call the overloaded `getContext`
+ * directly on that union type (each side declares a different overload
+ * list, so the union has no compatible call signature) — this casts the
+ * receiver to a single concrete type first so the call type-checks.
+ * (Duplicated from core/editor.ts's identical helper — see the plan's rule
+ * to repeat code across tasks rather than add a cross-task import.)
+ */
+function get2DContext(canvas: HTMLCanvasElement | OffscreenCanvas): Ctx2D | null {
+  return (canvas as HTMLCanvasElement).getContext('2d') as Ctx2D | null;
+}
+
 async function cropDataUrl(dataUrl: string, rect: Rect): Promise<string> {
   const blob = await (await fetch(dataUrl)).blob();
   const bitmap = await createImageBitmap(blob);
@@ -3255,7 +3283,8 @@ async function cropDataUrl(dataUrl: string, rect: Rect): Promise<string> {
     canvas.width = rect.width;
     canvas.height = rect.height;
   }
-  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+  const ctx = get2DContext(canvas);
+  if (!ctx) throw new Error('cropDataUrl: could not get 2d context');
   ctx.drawImage(bitmap, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height);
 
   if ('convertToBlob' in canvas) {
@@ -4183,7 +4212,7 @@ cd extension && npm test && npm run typecheck
 cd ../service && go vet ./... && go test ./...
 ```
 
-Expected: every extension test (core + platform, ~50 assertions across `geometry`, `annotations`, `tools`, `renderer`, `editor`, `stitch`, `transport`, `store`) and every Go test (config, token, auth, save, handler) PASS; both typecheck and vet are clean.
+Expected: every extension test (core + platform, 49 tests across `geometry`, `annotations`, `tools`, `renderer`, `editor`, `stitch`, `transport`, `store`) and every Go test (config, token, auth, save, handler) PASS; both typecheck and vet are clean.
 
 - [ ] **Step 11: Browser end-to-end checklist (Brave)**
 
