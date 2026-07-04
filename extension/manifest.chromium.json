@@ -1,0 +1,7 @@
+{
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["debugger"],
+  "minimum_chrome_version": "116"
+}
