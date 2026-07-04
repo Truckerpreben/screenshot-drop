@@ -11,6 +11,16 @@ export interface AnnotationEditorOptions {
 type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
 /**
+ * Gets a 2D context from either canvas kind. Calling `.getContext('2d')`
+ * directly on the `HTMLCanvasElement | OffscreenCanvas` union trips TS2349
+ * under stricter lib configs (incompatible overload signatures), so narrow
+ * to one member before the call.
+ */
+function get2DContext(c: HTMLCanvasElement | OffscreenCanvas): Ctx2D | null {
+  return (c as HTMLCanvasElement).getContext('2d') as Ctx2D | null;
+}
+
+/**
  * Drives freehand/shape annotation over a base image on a canvas.
  * Framework-free: no browser-extension APIs, only DOM/canvas primitives
  * (so it can host inside a Wails webview unchanged).
@@ -28,9 +38,9 @@ export class AnnotationEditor {
   constructor(opts: AnnotationEditorOptions) {
     this.canvas = opts.canvas;
     this.image = opts.image;
-    const ctx = this.canvas.getContext('2d');
+    const ctx = get2DContext(this.canvas);
     if (!ctx) throw new Error('AnnotationEditor: could not get 2d context');
-    this.ctx = ctx as Ctx2D;
+    this.ctx = ctx;
     this.redraw();
   }
 
