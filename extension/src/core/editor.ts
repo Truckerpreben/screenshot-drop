@@ -1,11 +1,13 @@
 import type { Point } from './geometry';
 import { AnnotationState, type Annotation, type ToolKind } from './annotations';
-import { render } from './renderer';
+import { render, type PixelCanvasLike } from './renderer';
 import { canvasToPngBlob } from './png';
 
 export interface AnnotationEditorOptions {
   canvas: HTMLCanvasElement | OffscreenCanvas;
   image: CanvasImageSource;
+  /** Scratch-canvas factory forwarded to the renderer so the pixelate tool can redact. */
+  createCanvas?: (w: number, h: number) => PixelCanvasLike;
 }
 
 type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
@@ -29,6 +31,7 @@ export class AnnotationEditor {
   private canvas: HTMLCanvasElement | OffscreenCanvas;
   private image: CanvasImageSource;
   private ctx: Ctx2D;
+  private createCanvas?: (w: number, h: number) => PixelCanvasLike;
   private state = new AnnotationState();
   private tool: ToolKind = 'arrow';
   private color = '#e5484d';
@@ -39,6 +42,7 @@ export class AnnotationEditor {
   constructor(opts: AnnotationEditorOptions) {
     this.canvas = opts.canvas;
     this.image = opts.image;
+    this.createCanvas = opts.createCanvas;
     const ctx = get2DContext(this.canvas);
     if (!ctx) throw new Error('AnnotationEditor: could not get 2d context');
     this.ctx = ctx;
@@ -71,9 +75,18 @@ export class AnnotationEditor {
   }
 
   pointerDown(point: Point): void {
+    // Text is click-placed via addText(); drags on the text tool are ignored.
+    if (this.tool === 'text') return;
     this.drawing = true;
     const points = this.tool === 'pen' ? [point] : [point, point];
     this.current = { tool: this.tool, color: this.color, width: this.strokeWidth, points };
+  }
+
+  /** Places a single-line text label at `point`. Empty/whitespace text is ignored. */
+  addText(point: Point, text: string): void {
+    if (!text.trim()) return;
+    this.state.add({ tool: 'text', color: this.color, width: this.strokeWidth, points: [point], text });
+    this.redraw();
   }
 
   pointerMove(point: Point): void {
@@ -114,6 +127,6 @@ export class AnnotationEditor {
 
   private redraw(): void {
     const live = this.current ? [...this.state.annotations, this.current] : this.state.annotations;
-    render(this.ctx, this.image, live);
+    render(this.ctx, this.image, live, { createCanvas: this.createCanvas });
   }
 }

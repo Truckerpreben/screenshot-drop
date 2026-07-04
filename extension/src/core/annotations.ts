@@ -1,6 +1,6 @@
 import type { Point } from './geometry';
 
-export type ToolKind = 'arrow' | 'rect' | 'line' | 'pen';
+export type ToolKind = 'arrow' | 'rect' | 'line' | 'pen' | 'text' | 'pixelate';
 
 export interface Annotation {
   tool: ToolKind;
@@ -8,6 +8,8 @@ export interface Annotation {
   points: Point[];
   /** Stroke width in px. Optional for back-compat; the renderer falls back to 3 when absent or 0. */
   width?: number;
+  /** Single-line label content for the 'text' tool. */
+  text?: string;
 }
 
 /** Mutable, undoable list of annotations drawn on a single capture. */

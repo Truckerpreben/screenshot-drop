@@ -4,19 +4,23 @@ export interface ToolDef {
   id: ToolKind;
   label: string;
   key: string;
+  /** Whether the tool draws in the active color. Defaults to true; false for pixelate (redaction). */
+  usesColor?: boolean;
 }
 
 export const TOOLS: ToolDef[] = [
   { id: 'arrow', label: 'Arrow', key: '1' },
   { id: 'rect', label: 'Rectangle', key: '2' },
   { id: 'line', label: 'Line', key: '3' },
-  { id: 'pen', label: 'Pen', key: '4' }
+  { id: 'pen', label: 'Pen', key: '4' },
+  { id: 'text', label: 'Text', key: '5' },
+  { id: 'pixelate', label: 'Pixelate', key: '6', usesColor: false }
 ];
 
 export const COLORS = ['#e5484d', '#3b82f6'] as const;
 export type ColorValue = (typeof COLORS)[number];
 
-/** Looks up the tool bound to a keyboard key ('1'-'4'), or undefined. */
+/** Looks up the tool bound to a keyboard key ('1'-'6'), or undefined. */
 export function toolForKey(key: string): ToolKind | undefined {
   return TOOLS.find((t) => t.key === key)?.id;
 }

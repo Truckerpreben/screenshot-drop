@@ -1,8 +1,26 @@
 import type { Annotation } from './annotations';
-import { arrowHead } from './geometry';
+import { arrowHead, clampRectToBounds, normalizeRect, pixelGrid } from './geometry';
+
+/** Minimal 2D context surface the pixelate pass needs from a scratch canvas. */
+export interface PixelCtxLike {
+  drawImage(image: CanvasImageSource, ...coords: number[]): void;
+  imageSmoothingEnabled: boolean;
+}
+
+/** Minimal canvas surface the pixelate pass needs from the injected factory. */
+export interface PixelCanvasLike {
+  width: number;
+  height: number;
+  getContext(kind: '2d'): PixelCtxLike | null;
+}
 
 export interface RenderOptions {
   lineWidth?: number;
+  /**
+   * Factory for a scratch canvas used by the pixelate tool (OffscreenCanvas in
+   * the extension, an <canvas> in Wails). When absent, pixelate is a no-op.
+   */
+  createCanvas?: (w: number, h: number) => PixelCanvasLike;
 }
 
 const DEFAULT_LINE_WIDTH = 3;
@@ -27,11 +45,17 @@ export function render(
 
   const fallbackWidth = opts.lineWidth ?? DEFAULT_LINE_WIDTH;
   for (const annotation of annotations) {
-    drawAnnotation(ctx, annotation, fallbackWidth);
+    drawAnnotation(ctx, annotation, baseImage, fallbackWidth, opts.createCanvas);
   }
 }
 
-function drawAnnotation(ctx: Ctx2D, annotation: Annotation, fallbackWidth: number): void {
+function drawAnnotation(
+  ctx: Ctx2D,
+  annotation: Annotation,
+  baseImage: CanvasImageSource,
+  fallbackWidth: number,
+  createCanvas?: (w: number, h: number) => PixelCanvasLike
+): void {
   // Per-annotation stroke width; fall back to the default when unset or 0.
   const width = annotation.width && annotation.width > 0 ? annotation.width : fallbackWidth;
   ctx.strokeStyle = annotation.color;
@@ -46,6 +70,12 @@ function drawAnnotation(ctx: Ctx2D, annotation: Annotation, fallbackWidth: numbe
       break;
     case 'pen':
       drawPen(ctx, annotation);
+      break;
+    case 'text':
+      drawText(ctx, annotation, width);
+      break;
+    case 'pixelate':
+      drawPixelate(ctx, annotation, baseImage, createCanvas);
       break;
   }
 }
@@ -92,4 +122,49 @@ function drawPen(ctx: Ctx2D, annotation: Annotation): void {
     ctx.lineTo(point.x, point.y);
   }
   ctx.stroke();
+}
+
+function drawText(ctx: Ctx2D, annotation: Annotation, width: number): void {
+  const [p] = annotation.points;
+  if (!p || !annotation.text) return;
+  const fontSize = 8 + width * 3;
+  ctx.font = `600 ${fontSize}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+  ctx.textBaseline = 'top';
+  ctx.lineJoin = 'round';
+  // A dark outline behind the colored fill keeps the label legible over any background.
+  ctx.lineWidth = Math.max(2, fontSize / 6);
+  ctx.strokeStyle = 'rgba(0,0,0,0.65)';
+  ctx.strokeText(annotation.text, p.x, p.y);
+  ctx.fillStyle = annotation.color;
+  ctx.fillText(annotation.text, p.x, p.y);
+}
+
+function drawPixelate(
+  ctx: Ctx2D,
+  annotation: Annotation,
+  baseImage: CanvasImageSource,
+  createCanvas?: (w: number, h: number) => PixelCanvasLike
+): void {
+  const [start, end] = annotation.points;
+  // Graceful no-op if the region is incomplete or no scratch-canvas factory was supplied.
+  if (!start || !end || !createCanvas) return;
+  const canvas = ctx.canvas as { width: number; height: number };
+  const r = clampRectToBounds(normalizeRect(start, end), { width: canvas.width, height: canvas.height });
+  if (r.width < 1 || r.height < 1) return;
+
+  const blockSize = Math.max(4, (annotation.width ?? 3) * 2);
+  const { cols, rows } = pixelGrid(r, blockSize);
+  const tmp = createCanvas(cols, rows);
+  const tctx = tmp.getContext('2d');
+  if (!tctx) return;
+
+  // Downscale the region to a coarse grid, then upscale it back with smoothing
+  // off to get blocky pixels.
+  // NOTE: pixelate samples the BASE image, so any annotation drawn *before* it
+  // is covered by the redaction — this is the intended redaction semantic.
+  tctx.drawImage(baseImage, r.x, r.y, r.width, r.height, 0, 0, cols, rows);
+  const prevSmoothing = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(tmp as unknown as CanvasImageSource, 0, 0, cols, rows, r.x, r.y, r.width, r.height);
+  ctx.imageSmoothingEnabled = prevSmoothing;
 }

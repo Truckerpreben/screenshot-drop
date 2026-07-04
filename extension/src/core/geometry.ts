@@ -47,6 +47,18 @@ export function arrowHead(from: Point, to: Point, len: number, angleRad: number)
   return [left, right];
 }
 
+/**
+ * Computes the coarse grid dimensions for pixelating `rect` with square blocks
+ * of ~`blockSize` px. Block size is floored to at least 1; cols/rows are the
+ * ceil of each dimension over the block size, and never below 1.
+ */
+export function pixelGrid(rect: Rect, blockSize: number): { cols: number; rows: number } {
+  const bs = Math.max(1, Math.floor(blockSize));
+  const cols = Math.max(1, Math.ceil(rect.width / bs));
+  const rows = Math.max(1, Math.ceil(rect.height / bs));
+  return { cols, rows };
+}
+
 /** Clamps a rect so it lies fully within [0,0]-[bounds.width,bounds.height]. */
 export function clampRectToBounds(rect: Rect, bounds: { width: number; height: number }): Rect {
   const x = Math.max(0, Math.min(rect.x, bounds.width));

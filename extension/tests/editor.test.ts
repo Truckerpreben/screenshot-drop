@@ -11,7 +11,13 @@ function createStubCanvas() {
     lineTo: () => {},
     stroke: () => {},
     strokeRect: () => {},
+    fillText: () => {},
+    strokeText: () => {},
     strokeStyle: '',
+    fillStyle: '',
+    font: '',
+    textBaseline: '',
+    imageSmoothingEnabled: true,
     lineWidth: 0,
     lineCap: '',
     lineJoin: ''
@@ -113,5 +119,54 @@ describe('AnnotationEditor', () => {
     expect(editor.currentStrokeWidth).toBe(1);
     editor.setStrokeWidth(99);
     expect(editor.currentStrokeWidth).toBe(12);
+  });
+
+  it('text tool ignores pointer drags (text is click-placed via addText)', () => {
+    editor.setTool('text');
+    editor.pointerDown({ x: 0, y: 0 });
+    editor.pointerMove({ x: 5, y: 5 });
+    editor.pointerUp();
+    expect(editor.annotations.length).toBe(0);
+  });
+
+  it('addText commits a text annotation with the point, text, color, and width', () => {
+    editor.setTool('text');
+    editor.setColor('#3b82f6');
+    editor.setStrokeWidth(4);
+    editor.addText({ x: 7, y: 9 }, 'hello');
+    expect(editor.annotations.length).toBe(1);
+    expect(editor.annotations[0]).toEqual({
+      tool: 'text',
+      color: '#3b82f6',
+      width: 4,
+      points: [{ x: 7, y: 9 }],
+      text: 'hello'
+    });
+  });
+
+  it('addText with only whitespace commits nothing', () => {
+    editor.addText({ x: 1, y: 1 }, '   ');
+    expect(editor.annotations.length).toBe(0);
+  });
+
+  it('pixelate drag commits a two-point annotation carrying the current width', () => {
+    editor.setTool('pixelate');
+    editor.setStrokeWidth(5);
+    editor.pointerDown({ x: 0, y: 0 });
+    editor.pointerMove({ x: 10, y: 10 });
+    editor.pointerUp();
+    expect(editor.annotations.length).toBe(1);
+    expect(editor.annotations[0].tool).toBe('pixelate');
+    expect(editor.annotations[0].points).toEqual([{ x: 0, y: 0 }, { x: 10, y: 10 }]);
+    expect(editor.annotations[0].width).toBe(5);
+  });
+
+  it('undo removes a committed pixelate annotation', () => {
+    editor.setTool('pixelate');
+    editor.pointerDown({ x: 0, y: 0 });
+    editor.pointerMove({ x: 10, y: 10 });
+    editor.pointerUp();
+    editor.undo();
+    expect(editor.annotations.length).toBe(0);
   });
 });

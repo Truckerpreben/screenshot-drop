@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeRect, scaleRect, arrowHead, clampRectToBounds } from '../src/core/geometry';
+import { normalizeRect, scaleRect, arrowHead, clampRectToBounds, pixelGrid } from '../src/core/geometry';
 
 describe('normalizeRect', () => {
   it('normalizes a rect dragged bottom-right to top-left', () => {
@@ -44,5 +44,23 @@ describe('clampRectToBounds', () => {
   it('clamps negative origin into bounds', () => {
     const rect = clampRectToBounds({ x: -10, y: -10, width: 20, height: 20 }, { width: 100, height: 100 });
     expect(rect).toEqual({ x: 0, y: 0, width: 20, height: 20 });
+  });
+});
+
+describe('pixelGrid', () => {
+  it('divides evenly for a clean divisor', () => {
+    expect(pixelGrid({ x: 0, y: 0, width: 100, height: 50 }, 10)).toEqual({ cols: 10, rows: 5 });
+  });
+
+  it('ceils the count when the dimension is not a multiple of the block size', () => {
+    expect(pixelGrid({ x: 0, y: 0, width: 105, height: 52 }, 10)).toEqual({ cols: 11, rows: 6 });
+  });
+
+  it('treats a block size below 1 as 1', () => {
+    expect(pixelGrid({ x: 0, y: 0, width: 4, height: 4 }, 0)).toEqual({ cols: 4, rows: 4 });
+  });
+
+  it('returns at least 1 column and row for a zero-size rect', () => {
+    expect(pixelGrid({ x: 0, y: 0, width: 0, height: 0 }, 8)).toEqual({ cols: 1, rows: 1 });
   });
 });
