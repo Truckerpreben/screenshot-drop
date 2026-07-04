@@ -72,3 +72,26 @@
 9. In the extension's Options page, add a destination with this machine's
    name, `http://<computer-b-lan-ip>:9922` as the service address, and the
    token from step 3.
+
+## Optional: retention pruning
+
+By default snapdropd keeps every screenshot forever. You can opt into automatic
+pruning of the save directory (`SNAPDROP_DIR`, top level only — subdirectories
+and symlinks are never touched). Both limits default to `0` (disabled) and can
+be combined; when combined, age pruning runs first and the count limit applies
+to what remains.
+
+Set either or both in `/etc/snapdrop/snapdrop.env` (or via the `-retain-days` /
+`-retain-max` flags):
+
+```bash
+SNAPDROP_RETAIN_DAYS=30   # delete screenshots older than 30 days
+SNAPDROP_RETAIN_MAX=500   # keep only the 500 newest screenshots
+```
+
+Pruning runs once at startup and then hourly. After editing the env file,
+restart the service:
+
+```bash
+sudo systemctl restart snapdropd
+```

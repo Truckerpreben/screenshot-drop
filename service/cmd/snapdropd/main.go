@@ -29,7 +29,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("server error: %v", err)
 	}
-	if err := server.Run(srv); err != nil {
+	if err := server.Run(srv, cfg.Dir, cfg.RetainDays, cfg.RetainMax); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
 }

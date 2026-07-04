@@ -76,8 +76,42 @@ func NewServer(addr, token, dir string, maxBytes int64) (*http.Server, error) {
 	}, nil
 }
 
-// Run starts srv and blocks until SIGINT/SIGTERM, then shuts it down gracefully.
-func Run(srv *http.Server) error {
+const retentionInterval = time.Hour
+
+// startRetention runs an initial prune sweep and then prunes hourly until ctx
+// is cancelled. It is a no-op when both retention limits are disabled.
+func startRetention(ctx context.Context, dir string, retainDays, retainMax int) {
+	if retainDays <= 0 && retainMax <= 0 {
+		return
+	}
+	PruneDir(dir, time.Now(), retainDays, retainMax)
+	go func() {
+		ticker := time.NewTicker(retentionInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				PruneDir(dir, time.Now(), retainDays, retainMax)
+			}
+		}
+	}()
+}
+
+// Run starts srv and the retention sweeper, and blocks until SIGINT/SIGTERM,
+// then shuts the server down gracefully and stops retention. dir is the save
+// directory (resolved to absolute for pruning); retainDays/retainMax follow
+// the PlanPrune semantics (0 = disabled).
+func Run(srv *http.Server, dir string, retainDays, retainMax int) error {
+	retentionCtx, cancelRetention := context.WithCancel(context.Background())
+	defer cancelRetention()
+	if absDir, err := filepath.Abs(dir); err == nil {
+		startRetention(retentionCtx, absDir, retainDays, retainMax)
+	} else {
+		log.Printf("retention: cannot resolve dir %q, retention disabled: %v", dir, err)
+	}
+
 	errCh := make(chan error, 1)
 	go func() {
 		log.Printf("snapdropd listening on %s", srv.Addr)
@@ -94,6 +128,7 @@ func Run(srv *http.Server) error {
 		return err
 	case <-sigCh:
 		log.Println("shutting down...")
+		cancelRetention()
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		return srv.Shutdown(ctx)

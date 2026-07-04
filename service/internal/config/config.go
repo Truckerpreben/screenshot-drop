@@ -20,6 +20,10 @@ type Config struct {
 	Dir      string
 	Token    string
 	MaxBytes int64
+	// RetainDays prunes files older than this many days (0 = disabled).
+	RetainDays int
+	// RetainMax keeps at most this many newest files (0 = disabled).
+	RetainMax int
 }
 
 var ErrTokenRequired = errors.New("config: token is required (set SNAPDROP_TOKEN, -token, or token=... in env file)")
@@ -62,6 +66,8 @@ func Load(args []string, getenv func(string) string) (Config, error) {
 	dirFlag := fs.String("dir", "", "screenshot save directory")
 	tokenFlag := fs.String("token", "", "shared auth token")
 	maxBytesFlag := fs.Int64("max-bytes", 0, "max upload size in bytes")
+	retainDaysFlag := fs.Int("retain-days", 0, "prune files older than N days (0 = disabled)")
+	retainMaxFlag := fs.Int("retain-max", 0, "keep at most N newest files (0 = disabled)")
 	envFileFlag := fs.String("env-file", "", "optional KEY=VALUE config file")
 	if err := fs.Parse(args); err != nil {
 		return Config{}, err
@@ -120,6 +126,34 @@ func Load(args []string, getenv func(string) string) (Config, error) {
 	}
 	if *maxBytesFlag != 0 {
 		cfg.MaxBytes = *maxBytesFlag
+	}
+
+	if v := fileValues["SNAPDROP_RETAIN_DAYS"]; v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.RetainDays = n
+		}
+	}
+	if v := getenv("SNAPDROP_RETAIN_DAYS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.RetainDays = n
+		}
+	}
+	if *retainDaysFlag != 0 {
+		cfg.RetainDays = *retainDaysFlag
+	}
+
+	if v := fileValues["SNAPDROP_RETAIN_MAX"]; v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.RetainMax = n
+		}
+	}
+	if v := getenv("SNAPDROP_RETAIN_MAX"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.RetainMax = n
+		}
+	}
+	if *retainMaxFlag != 0 {
+		cfg.RetainMax = *retainMaxFlag
 	}
 
 	if cfg.Token == "" {
