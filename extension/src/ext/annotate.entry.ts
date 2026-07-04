@@ -8,19 +8,32 @@ import { WebextStore } from '../platform/store-webext';
 import type { Destination } from '../platform/transport';
 
 /**
- * Inline SVG glyphs for the toolbar tool buttons, keyed by tool id. Inlined as
- * markup (not remote assets) to satisfy the MV3 CSP; sizing/color come from CSS.
+ * Inline SVG glyphs, keyed by tool id, for the toolbar buttons. Inlined as
+ * markup (not remote assets) to satisfy the MV3 CSP; size/color come from CSS.
  */
 const TOOL_ICONS: Record<string, string> = {
   arrow:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>',
-  rect:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/></svg>',
-  line:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" y1="18" x2="18" y2="6"/><circle cx="6" cy="18" r="1.7"/><circle cx="18" cy="6" r="1.7"/></svg>',
-  pen:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>'
+  rect: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/></svg>',
+  line: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" y1="18" x2="18" y2="6"/><circle cx="6" cy="18" r="1.7"/><circle cx="18" cy="6" r="1.7"/></svg>',
+  pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>'
 };
+
+const SEND_ICON =
+  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>';
+
+type ToastVariant = 'success' | 'error' | 'info';
+
+const TOAST_ICONS: Record<ToastVariant, string> = {
+  success:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4 4 10-10"/></svg>',
+  error:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11v5M12 7.5h.01"/></svg>'
+};
+
+const FATAL_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M8 3h11a2 2 0 0 1 2 2v11M21 21H5a2 2 0 0 1-2-2V5"/><path d="M15 8.5a1 1 0 1 1-1-1"/></svg>';
 
 function getCaptureId(): string {
   const params = new URLSearchParams(window.location.search);
@@ -47,31 +60,42 @@ function loadImage(dataUrl: string): Promise<HTMLImageElement> {
   });
 }
 
-function showToast(message: string): void {
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * Shows a transient toast. The `variant` only affects the icon/color; the
+ * message text and ~4s auto-dismiss are unchanged from the reviewed behavior.
+ */
+function showToast(message: string, variant: ToastVariant = 'info'): void {
   const toast = document.getElementById('toast');
   if (!toast) return;
-  toast.textContent = message;
+  toast.dataset.variant = variant;
+  toast.innerHTML = `<span class="toast__icon" aria-hidden="true">${TOAST_ICONS[variant]}</span><span class="toast__msg"></span>`;
+  const msgEl = toast.querySelector('.toast__msg') as HTMLElement | null;
+  if (msgEl) msgEl.textContent = message;
   toast.classList.add('visible');
-  setTimeout(() => toast.classList.remove('visible'), 4000);
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('visible'), 4000);
 }
 
 /**
  * Renders a terminal error state: hides the editing UI and shows a single
- * centered message. Used when there's no capture to annotate (page opened
+ * centered card. Used when there's no capture to annotate (page opened
  * directly, session entry expired) or the background reported a capture error.
  */
 function showFatal(message: string): void {
-  for (const id of ['toolbar', 'color-toggle', 'undo', 'clear', 'canvas', 'save-bar', 'toast']) {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  }
+  document.body.classList.add('is-fatal');
   let fatal = document.getElementById('fatal');
   if (!fatal) {
     fatal = document.createElement('div');
     fatal.id = 'fatal';
+    fatal.className = 'fatal';
+    fatal.setAttribute('role', 'alert');
+    fatal.innerHTML = `<div class="fatal__icon" aria-hidden="true">${FATAL_ICON}</div><p class="fatal__title">Can't open the editor</p><p class="fatal__msg"></p>`;
     document.body.appendChild(fatal);
   }
-  fatal.textContent = message;
+  const msgEl = fatal.querySelector('.fatal__msg') as HTMLElement | null;
+  if (msgEl) msgEl.textContent = message;
 }
 
 async function populateDestinations(select: HTMLSelectElement, store: WebextStore): Promise<void> {
@@ -172,6 +196,16 @@ async function main(): Promise<void> {
 
   const shortnameInput = document.getElementById('shortname') as HTMLInputElement;
   const saveButton = document.getElementById('save') as HTMLButtonElement;
+  const saveIcon = saveButton.querySelector('.save__icon') as HTMLElement | null;
+  const saveLabel = document.getElementById('save-label');
+
+  // Presentation-only: toggles the save button's in-flight look. The actual
+  // double-submit guard is `saveButton.disabled`, set/cleared in the handler.
+  const setSaving = (saving: boolean): void => {
+    saveButton.classList.toggle('is-saving', saving);
+    if (saveIcon) saveIcon.innerHTML = saving ? '<span class="spinner"></span>' : SEND_ICON;
+    if (saveLabel) saveLabel.textContent = saving ? 'Saving…' : 'Save & copy';
+  };
 
   document.addEventListener('keydown', (e) => {
     // Don't fire editor shortcuts while typing in a text field, select, or
@@ -202,12 +236,13 @@ async function main(): Promise<void> {
     const destinations = await store.list();
     const dest = destinations.find((d: Destination) => d.id === select.value);
     if (!dest) {
-      showToast('No destination selected — add one in Options.');
+      showToast('No destination selected — add one in Options.', 'info');
       return;
     }
 
     // Prevent a double-click from uploading twice (which saves a -2 duplicate).
     saveButton.disabled = true;
+    setSaving(true);
     try {
       const blob = await editor.toBlob();
       const transport = new HttpTransport();
@@ -216,26 +251,27 @@ async function main(): Promise<void> {
       // The upload succeeded — always report success. The clipboard copy is a
       // best-effort convenience; if it fails (e.g. the Save-click's user
       // activation expired during the round-trip) the file is still saved.
-      showToast(`Saved: ${result.path}`);
+      showToast(`Saved: ${result.path}`, 'success');
       try {
         await navigator.clipboard.writeText(result.path);
-        showToast(`Saved: ${result.path} (copied to clipboard)`);
+        showToast(`Saved: ${result.path} (copied to clipboard)`, 'success');
       } catch (clipErr) {
-        showToast(`Saved: ${result.path} (copy the path above manually)`);
+        showToast(`Saved: ${result.path} (copy the path above manually)`, 'success');
         console.error('screenshot-drop: clipboard write failed', clipErr);
       }
     } catch (err) {
       if (err instanceof UploadError) {
-        if (err.kind === 'auth') showToast('Auth failed — check the token in Options.');
-        else if (err.kind === 'network') showToast('Could not reach the destination service.');
-        else if (err.kind === 'server') showToast('Destination service returned an error.');
-        else showToast('Destination service returned an unexpected response.');
+        if (err.kind === 'auth') showToast('Auth failed — check the token in Options.', 'error');
+        else if (err.kind === 'network') showToast('Could not reach the destination service.', 'error');
+        else if (err.kind === 'server') showToast('Destination service returned an error.', 'error');
+        else showToast('Destination service returned an unexpected response.', 'error');
       } else {
-        showToast('Save failed — see console for details.');
+        showToast('Save failed — see console for details.', 'error');
       }
       console.error('screenshot-drop: save failed', err);
     } finally {
       saveButton.disabled = false;
+      setSaving(false);
     }
   });
 }

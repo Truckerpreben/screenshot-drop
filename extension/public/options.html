@@ -7,81 +7,87 @@
     <link rel="stylesheet" href="styles/options.css" />
   </head>
   <body>
-    <div class="page">
-      <header class="page-header">
-        <span class="app-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="4" width="18" height="14" rx="2.5" />
-            <path d="M3 15l4.5-4.5a2 2 0 0 1 2.8 0L16 16" />
-            <circle cx="9" cy="9" r="1.4" />
-            <path d="M12 21h6M15 18v6" />
-          </svg>
-        </span>
-        <div class="page-header__text">
-          <h1>Destinations</h1>
-          <p>Receiving services your screenshots can be sent to.</p>
+    <header class="topbar">
+      <div class="topbar__inner">
+        <div class="brand">
+          <span class="brand-mark brand__mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 8.5V6.5A2.5 2.5 0 0 1 6.5 4h2M15.5 4h2A2.5 2.5 0 0 1 20 6.5v2M20 15.5v2a2.5 2.5 0 0 1-2.5 2.5h-2M8.5 20h-2A2.5 2.5 0 0 1 4 17.5v-2" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </span>
+          <span class="brand__name">Screenshot Drop</span>
         </div>
-      </header>
+        <span class="topbar__tag">Settings</span>
+      </div>
+    </header>
 
-      <section class="card table-card" aria-labelledby="destinations-heading">
-        <h2 id="destinations-heading" class="card__title">Saved destinations</h2>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Service address</th>
-                <th scope="col">Token</th>
-                <th scope="col"><span class="sr-only">Actions</span></th>
-              </tr>
-            </thead>
-            <tbody id="destinations-body"></tbody>
-          </table>
-          <div class="empty-state" role="status">
-            <span class="empty-state__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h4l2 2.5h7A2.5 2.5 0 0 1 21 10v6.5A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z" />
-                <path d="M12 10.5v4M10 12.5h4" />
+    <main class="content">
+      <div class="stack">
+        <section class="panel" aria-labelledby="dest-heading">
+          <div class="panel__head">
+            <div class="panel__headtext">
+              <h1 id="dest-heading" class="panel__title">Destinations</h1>
+              <p class="panel__desc">Receiving services on your network that screenshots can be sent to.</p>
+            </div>
+            <span class="count" id="dest-count" aria-hidden="true">0</span>
+          </div>
+
+          <div id="dest-list" class="dest-list" role="list"></div>
+
+          <div id="dest-empty" class="empty" role="status" hidden>
+            <span class="empty__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="7" rx="2" />
+                <rect x="3" y="13" width="18" height="7" rx="2" />
+                <path d="M7 7.5h.01M7 16.5h.01" />
               </svg>
             </span>
-            <p class="empty-state__title">No destinations yet</p>
-            <p class="empty-state__hint">Add a receiving service below to start dropping screenshots.</p>
+            <p class="empty__title">No destinations yet</p>
+            <p class="empty__hint">Add a receiving service below to start sending screenshots.</p>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section class="card" aria-labelledby="form-heading">
-        <h2 id="form-heading" class="card__title">Add or edit a destination</h2>
-        <form id="destination-form" novalidate>
-          <input type="hidden" id="form-id" />
-
-          <div class="field">
-            <label for="form-name">Name</label>
-            <input id="form-name" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. Home server" />
+        <section class="panel" aria-labelledby="form-title">
+          <div class="panel__head">
+            <div class="panel__headtext">
+              <h2 id="form-title" class="panel__title panel__title--sm">Add a destination</h2>
+            </div>
           </div>
 
-          <div class="field">
-            <label for="form-url">Service address</label>
-            <input id="form-url" type="text" autocomplete="off" spellcheck="false" placeholder="http://10.2.50.13:9922" />
-            <p class="field__hint">Must start with <code>http://</code> and include a host and port.</p>
-          </div>
+          <form id="destination-form" class="form" novalidate>
+            <input type="hidden" id="form-id" />
 
-          <div class="field">
-            <label for="form-token">Token</label>
-            <input id="form-token" type="password" autocomplete="off" placeholder="Shared access token" />
-          </div>
+            <div class="field">
+              <label class="label" for="form-name">Name</label>
+              <input id="form-name" class="input" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. Home server" />
+            </div>
 
-          <p id="form-error" class="error" role="alert" aria-live="polite"></p>
+            <div class="field">
+              <label class="label" for="form-url">Service address</label>
+              <input id="form-url" class="input mono" type="text" autocomplete="off" spellcheck="false" placeholder="http://10.2.50.13:9922" />
+              <p class="hint">Must start with <code class="code">http://</code> and include a host and port.</p>
+            </div>
 
-          <div class="form-actions">
-            <button type="submit" class="btn btn--primary">
-              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4 10-10" /></svg>
-              Save destination
-            </button>
-          </div>
-        </form>
-      </section>
-    </div>
+            <div class="field">
+              <label class="label" for="form-token">Token</label>
+              <input id="form-token" class="input" type="password" autocomplete="off" placeholder="Shared access token" />
+              <p class="hint">Stored locally in the browser and sent only to this destination.</p>
+            </div>
+
+            <div id="form-error" class="form-error" role="alert" aria-live="polite"></div>
+
+            <div class="form-actions">
+              <button id="form-cancel" class="btn btn-ghost" type="button" hidden>Cancel</button>
+              <button id="form-submit" class="btn btn-primary" type="submit">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4 4 10-10" /></svg>
+                <span id="form-submit-label">Save destination</span>
+              </button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </main>
 
     <script src="options.entry.js"></script>
   </body>

@@ -3,73 +3,83 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Screenshot Drop</title>
     <link rel="stylesheet" href="styles/popup.css" />
   </head>
   <body>
-    <div id="app">
-      <header class="app-header">
-        <span class="app-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="4" width="18" height="14" rx="2.5" />
-            <path d="M3 15l4.5-4.5a2 2 0 0 1 2.8 0L16 16" />
-            <circle cx="9" cy="9" r="1.4" />
-            <path d="M12 21h6M15 18v6" />
+    <div class="popup">
+      <header class="popup__head">
+        <div class="brand">
+          <span class="brand-mark brand__mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 8.5V6.5A2.5 2.5 0 0 1 6.5 4h2M15.5 4h2A2.5 2.5 0 0 1 20 6.5v2M20 15.5v2a2.5 2.5 0 0 1-2.5 2.5h-2M8.5 20h-2A2.5 2.5 0 0 1 4 17.5v-2" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </span>
+          <span class="brand__name">Screenshot Drop</span>
+        </div>
+        <button id="open-options" class="icon-btn" type="button" title="Manage destinations" aria-label="Manage destinations">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
-        </span>
-        <span class="app-title">Screenshot Drop</span>
+        </button>
       </header>
 
-      <p class="app-lead">Capture a screenshot and send it to a destination.</p>
-
-      <div class="mode-list" role="group" aria-label="Capture mode">
-        <button id="capture-full" type="button" class="mode-btn">
-          <span class="mode-btn__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <div class="modes" role="group" aria-label="Capture mode">
+        <button id="capture-full" class="mode" type="button">
+          <span class="mode__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
               <rect x="5" y="2.5" width="14" height="19" rx="2.5" />
-              <path d="M9 7h6M9 11h6M9 15h4" />
+              <path d="M8.5 7h7M8.5 10.5h7M8.5 14h5" />
             </svg>
           </span>
-          <span class="mode-btn__text">
-            <span class="mode-btn__title">Full page</span>
-            <span class="mode-btn__desc">The entire scrollable page</span>
+          <span class="mode__body">
+            <span class="mode__title">Full page</span>
+            <span class="mode__sub">Entire scrollable page, stitched</span>
           </span>
-          <span class="mode-btn__chevron" aria-hidden="true">
+          <span class="mode__go" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6" /></svg>
           </span>
         </button>
 
-        <button id="capture-visible" type="button" class="mode-btn">
-          <span class="mode-btn__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <button id="capture-visible" class="mode" type="button">
+          <span class="mode__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
               <rect x="2.5" y="4.5" width="19" height="13" rx="2.5" />
-              <path d="M8 21h8M12 17.5V21" />
+              <path d="M8.5 20.5h7M12 17.5v3" />
             </svg>
           </span>
-          <span class="mode-btn__text">
-            <span class="mode-btn__title">Visible tab</span>
-            <span class="mode-btn__desc">What's currently on screen</span>
+          <span class="mode__body">
+            <span class="mode__title">Visible tab</span>
+            <span class="mode__sub">What's on screen right now</span>
           </span>
-          <span class="mode-btn__chevron" aria-hidden="true">
+          <span class="mode__go" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6" /></svg>
           </span>
         </button>
 
-        <button id="capture-marked" type="button" class="mode-btn">
-          <span class="mode-btn__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M6 2.5v4M6 17.5v4M2.5 6h4M17.5 6h4M2.5 18h4M17.5 18h4M18 2.5v4M18 17.5v4" />
-              <rect x="6" y="6" width="12" height="12" rx="1.5" stroke-dasharray="2.5 3" />
+        <button id="capture-marked" class="mode" type="button">
+          <span class="mode__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 8V5.5A2.5 2.5 0 0 1 5.5 3H8M16 3h2.5A2.5 2.5 0 0 1 21 5.5V8M21 16v2.5a2.5 2.5 0 0 1-2.5 2.5H16M8 21H5.5A2.5 2.5 0 0 1 3 18.5V16" />
+              <rect x="8" y="8" width="8" height="8" rx="1" stroke-dasharray="1.5 2.5" />
             </svg>
           </span>
-          <span class="mode-btn__text">
-            <span class="mode-btn__title">Marked area</span>
-            <span class="mode-btn__desc">Select a region to capture</span>
+          <span class="mode__body">
+            <span class="mode__title">Marked area</span>
+            <span class="mode__sub">Drag to select a region</span>
           </span>
-          <span class="mode-btn__chevron" aria-hidden="true">
+          <span class="mode__go" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6" /></svg>
           </span>
         </button>
       </div>
+
+      <footer class="popup__foot">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4 4 10-10" /></svg>
+        <span>Opens the annotation editor after capture</span>
+      </footer>
     </div>
     <script src="popup.entry.js"></script>
   </body>
